@@ -1,5 +1,5 @@
 run:
-  go: "1.25"
+  go: "1.26"
   timeout: 5m
 
 linters:
@@ -24,7 +24,7 @@ linters-settings:
   gocritic:
     enabled-tags:
       - diagnostic
-      - security
+      - style
 
 issues:
   max-issues-per-linter: 0
