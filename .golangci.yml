@@ -9,15 +9,14 @@ linters:
     - errcheck
     - bodyclose
     - noctx
-    - exhaustive
-    - nilerr
     - contextcheck
     - gocritic
+    - revive
 
 linters-settings:
   gosec:
-    severity: medium
-    confidence: medium
+    excludes:
+      - G104 # redundant with errcheck
   errcheck:
     check-type-assertions: true
     check-blank: true
@@ -25,6 +24,7 @@ linters-settings:
     enabled-tags:
       - diagnostic
       - style
+      - performance
 
 issues:
   max-issues-per-linter: 0
