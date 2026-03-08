@@ -1,0 +1,51 @@
+# davlint configuration
+# Copy to davlint.yaml and adjust for your server.
+
+server:
+  # Base URL of the CardDAV server to test.
+  url: "https://contacts.example.com"
+
+# Principals used during testing.
+# Some tests (ACL, sharing) require two principals.
+# These accounts must exist on the server before running davlint.
+principals:
+  - username: "davlint-alice"
+    password: "testpass1"
+  - username: "davlint-bob"
+    password: "testpass2"
+
+# Suites to run. Comment out any you want to skip.
+suites:
+  - rfc6764   # discovery (well-known, principal bootstrap)
+  - rfc4918   # WebDAV core (PROPFIND, PUT, GET, DELETE, COPY, MOVE, PROPPATCH)
+  - rfc4918/locking  # WebDAV Class 2 locking
+  - rfc5689   # extended MKCOL
+  - rfc3744   # WebDAV ACL
+  - rfc6350   # vCard 4.0
+  - rfc2426   # vCard 3.0 conversion
+  - rfc6352   # CardDAV
+  - rfc6578   # sync-collection
+
+# Skip specific tests by ID.
+# skip:
+#   - "RFC4918/§9.10.4/lock-null-resources"
+
+# Only fail the run on violations of this severity or higher.
+# Options: must, should, may
+# "must" is recommended for CI — SHOULD violations become warnings.
+severity: must
+
+report:
+  # Output formats: terminal, junit, json, markdown
+  formats:
+    - terminal
+  # Directory to write non-terminal report files.
+  # output: "./davlint-results/"
+
+options:
+  # Delete all test resources after the run.
+  cleanup: true
+  # Per-request timeout.
+  timeout: 30s
+  # Stop on first failure.
+  fail_fast: false
