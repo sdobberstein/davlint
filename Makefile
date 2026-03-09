@@ -24,9 +24,9 @@ run:
 
 # Install all development tools. Re-run to upgrade.
 install-tools:
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	go install github.com/securego/gosec/v2/cmd/gosec@latest
-	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.2
+	go install github.com/securego/gosec/v2/cmd/gosec@v2.24.7
+	go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
 setup:
 	git config core.hooksPath hooks
