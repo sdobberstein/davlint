@@ -168,7 +168,7 @@ func suiteEnabled(suites []string, suite string) bool {
 		return true
 	}
 	for _, s := range suites {
-		if s == suite || strings.HasPrefix(s, suite+"/") {
+		if s == suite || strings.HasPrefix(suite, s+"/") {
 			return true
 		}
 	}
