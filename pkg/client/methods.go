@@ -59,6 +59,11 @@ func (c *Client) Get(ctx context.Context, path string) (*Response, error) {
 	return c.do(ctx, http.MethodGet, path, nil, nil)
 }
 
+// GetWithAccept sends a GET request with the given Accept header value.
+func (c *Client) GetWithAccept(ctx context.Context, path, accept string) (*Response, error) {
+	return c.do(ctx, http.MethodGet, path, http.Header{"Accept": {accept}}, nil)
+}
+
 // Put sends a PUT request with the given Content-Type and body.
 func (c *Client) Put(ctx context.Context, path, contentType string, body []byte) (*Response, error) {
 	h := http.Header{"Content-Type": {contentType}}

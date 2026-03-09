@@ -35,3 +35,11 @@ func PropertyValue(body []byte, prop, want string) error {
 	}
 	return fmt.Errorf("vCard property %q not found", prop)
 }
+
+// BodyHas asserts that body contains substr.
+func BodyHas(body []byte, substr string) error {
+	if !strings.Contains(string(body), substr) {
+		return fmt.Errorf("body does not contain %q", substr)
+	}
+	return nil
+}
