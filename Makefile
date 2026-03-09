@@ -1,4 +1,4 @@
-.PHONY: build test lint vuln run clean
+.PHONY: build test lint vuln run clean setup
 
 BINARY  := bin/davlint
 VERSION := 0.1.0-dev
@@ -21,6 +21,9 @@ vuln:
 
 run:
 	go run ./cmd/davlint
+
+setup:
+	git config core.hooksPath hooks
 
 clean:
 	rm -rf bin/ coverage.out coverage.html results/
