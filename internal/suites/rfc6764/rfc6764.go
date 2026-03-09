@@ -17,6 +17,7 @@ import (
 	"github.com/sdobberstein/davlint/pkg/assert"
 	"github.com/sdobberstein/davlint/pkg/client"
 	"github.com/sdobberstein/davlint/pkg/suite"
+	"github.com/sdobberstein/davlint/pkg/webdav"
 )
 
 func init() {
@@ -104,18 +105,19 @@ func testCurrentUserPrincipal(ctx context.Context, sess *suite.Session) error {
 	return assert.PropHrefContains(ms, sess.ContextPath, client.NSdav, "current-user-principal", c.Username())
 }
 
+
 func testAddressBookHomeSet(ctx context.Context, sess *suite.Session) error {
 	c := sess.Primary()
 
 	// Step 1: discover the principal URL from the context path.
-	principalURL, err := currentUserPrincipalURL(ctx, c, sess.ContextPath)
+	principalURL, err := webdav.CurrentUserPrincipalURL(ctx, c, sess.ContextPath)
 	if err != nil {
 		return err
 	}
 
 	// Step 2: PROPFIND the principal URL for the addressbook-home-set.
 	body := client.PropfindProps([][2]string{
-		{"urn:ietf:params:xml:ns:carddav", "addressbook-home-set"},
+		{client.NScarddav, "addressbook-home-set"},
 	})
 	resp, err := c.Propfind(ctx, principalURL, "0", body)
 	if err != nil {
@@ -128,29 +130,5 @@ func testAddressBookHomeSet(ctx context.Context, sess *suite.Session) error {
 	if err != nil {
 		return err
 	}
-	return assert.PropHrefContains(ms, principalURL, "urn:ietf:params:xml:ns:carddav", "addressbook-home-set", c.Username())
-}
-
-// currentUserPrincipalURL issues a depth-0 PROPFIND on contextPath and returns
-// the DAV:href value of the DAV:current-user-principal property.
-func currentUserPrincipalURL(ctx context.Context, c *client.Client, contextPath string) (string, error) {
-	body := client.PropfindProps([][2]string{
-		{client.NSdav, "current-user-principal"},
-	})
-	resp, err := c.Propfind(ctx, contextPath, "0", body)
-	if err != nil {
-		return "", fmt.Errorf("current-user-principal lookup: %w", err)
-	}
-	if err := assert.StatusCode(resp, 207); err != nil {
-		return "", fmt.Errorf("current-user-principal lookup: %w", err)
-	}
-	ms, err := client.ParseMultistatus(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("current-user-principal lookup: %w", err)
-	}
-	href, err := assert.PropHrefValue(ms, contextPath, client.NSdav, "current-user-principal")
-	if err != nil {
-		return "", fmt.Errorf("current-user-principal lookup: %w", err)
-	}
-	return href, nil
+	return assert.PropHrefContains(ms, principalURL, client.NScarddav, "addressbook-home-set", c.Username())
 }

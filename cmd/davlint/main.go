@@ -15,6 +15,7 @@ import (
 	"github.com/sdobberstein/davlint/pkg/suite"
 
 	// Register conformance test suites.
+	_ "github.com/sdobberstein/davlint/internal/suites/rfc4918"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6764"
 )
 

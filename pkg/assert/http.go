@@ -34,3 +34,11 @@ func HeaderContains(resp *client.Response, name, want string) error {
 	}
 	return nil
 }
+
+// HeaderPresent asserts that the named response header is present and non-empty.
+func HeaderPresent(resp *client.Response, name string) error {
+	if resp.Header.Get(name) == "" {
+		return fmt.Errorf("header %q: missing or empty", name)
+	}
+	return nil
+}
