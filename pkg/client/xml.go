@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"strings"
 )
 
 // WebDAV XML namespace URIs.
@@ -68,6 +69,78 @@ func PropInnerXML(inner []byte, ns, local string) bool {
 		}
 	}
 	return false
+}
+
+// xmlEscape returns s with XML special characters escaped.
+func xmlEscape(s string) string {
+	var b strings.Builder
+	_ = xml.EscapeText(&b, []byte(s)) //nolint:errcheck // strings.Builder.Write never fails
+	return b.String()
+}
+
+// propElem returns the XML self-closing element for a single property in the
+// DAV or CardDAV namespace. Used when building REPORT request bodies.
+func propElem(ns, local string) string {
+	switch ns {
+	case NSdav:
+		return fmt.Sprintf("<D:%s/>", local)
+	case NScarddav:
+		return fmt.Sprintf("<C:%s/>", local)
+	default:
+		return fmt.Sprintf("<ns0:%s xmlns:ns0=%q/>", local, ns)
+	}
+}
+
+// ReportAddressbookQuery returns a CardDAV addressbook-query REPORT body (RFC 6352 §8.6).
+// props is the list of [namespace, localname] pairs to request per matching resource.
+// filter is an optional raw XML fragment for the C:filter element; nil means no filter
+// (the server MUST return all address objects in the collection).
+func ReportAddressbookQuery(props [][2]string, filter []byte) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<C:addressbook-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	b.WriteString(`<D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElem(p[0], p[1]))
+	}
+	b.WriteString(`</D:prop>`)
+	if len(filter) > 0 {
+		b.WriteString(`<C:filter>`)
+		_, _ = b.Write(filter) //nolint:errcheck // strings.Builder.Write never fails
+		b.WriteString(`</C:filter>`)
+	}
+	b.WriteString(`</C:addressbook-query>`)
+	return []byte(b.String())
+}
+
+// ReportAddressbookQueryPropFilter returns a C:prop-filter XML fragment that
+// applies a text-match to the named vCard property (RFC 6352 §8.6.4).
+// The default collation (i;ascii-casemap) and match-type (contains) apply.
+// Pass the result as the filter argument to ReportAddressbookQuery.
+func ReportAddressbookQueryPropFilter(propName, textMatch string) []byte {
+	return []byte(fmt.Sprintf(
+		`<C:prop-filter name=%q><C:text-match>%s</C:text-match></C:prop-filter>`,
+		propName, xmlEscape(textMatch),
+	))
+}
+
+// ReportAddressbookMultiget returns a CardDAV addressbook-multiget REPORT body (RFC 6352 §8.7).
+// props is the list of [namespace, localname] pairs to request per resource;
+// hrefs is the list of absolute-path resource URLs to retrieve.
+func ReportAddressbookMultiget(props [][2]string, hrefs []string) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<C:addressbook-multiget xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	b.WriteString(`<D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElem(p[0], p[1]))
+	}
+	b.WriteString(`</D:prop>`)
+	for _, href := range hrefs {
+		fmt.Fprintf(&b, "<D:href>%s</D:href>", xmlEscape(href))
+	}
+	b.WriteString(`</C:addressbook-multiget>`)
+	return []byte(b.String())
 }
 
 // PropfindAllprop returns a PROPFIND body requesting all live properties.

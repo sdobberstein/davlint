@@ -136,6 +136,16 @@ func (c *Client) Report(ctx context.Context, path string, body []byte) (*Respons
 	return c.do(ctx, "REPORT", path, h, body)
 }
 
+// ReportWithDepth sends a REPORT request with an explicit Depth header.
+// RFC 6352 §8.6 and §8.7 require Depth: 1 for addressbook-query and addressbook-multiget.
+func (c *Client) ReportWithDepth(ctx context.Context, path, depth string, body []byte) (*Response, error) {
+	h := http.Header{
+		"Content-Type": {"application/xml; charset=utf-8"},
+		"Depth":        {depth},
+	}
+	return c.do(ctx, "REPORT", path, h, body)
+}
+
 // Lock sends a LOCK request.
 func (c *Client) Lock(ctx context.Context, path string, body []byte) (*Response, error) {
 	h := http.Header{"Content-Type": {"application/xml; charset=utf-8"}}
