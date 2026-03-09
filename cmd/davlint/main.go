@@ -13,6 +13,9 @@ import (
 	"github.com/sdobberstein/davlint/pkg/config"
 	"github.com/sdobberstein/davlint/pkg/report"
 	"github.com/sdobberstein/davlint/pkg/suite"
+
+	// Register conformance test suites.
+	_ "github.com/sdobberstein/davlint/internal/suites/rfc6764"
 )
 
 const version = "0.1.0-dev"

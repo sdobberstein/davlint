@@ -15,6 +15,9 @@ import (
 func minCfg() *config.Config {
 	cfg := &config.Config{}
 	cfg.Server.URL = "http://localhost:8080"
+	// Set ContextPath explicitly so Run() skips the /.well-known/carddav
+	// network round-trip during unit tests (no real server is running).
+	cfg.Server.ContextPath = "/dav/"
 	cfg.Severity = "must"
 	cfg.Options.Timeout = 5 * time.Second
 	return cfg

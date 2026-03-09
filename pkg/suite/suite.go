@@ -5,6 +5,7 @@ package suite
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -116,8 +117,20 @@ func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
 		return report
 	}
 
+	contextPath, err := discoverContextPath(ctx, cfg, clients[0])
+	if err != nil {
+		report.Results = append(report.Results, Result{
+			Test:   Test{ID: "_discovery", Description: "discover CardDAV context path"},
+			Passed: false,
+			Err:    err,
+		})
+		report.Failed = 1
+		report.Duration = time.Since(start)
+		return report
+	}
+
 	for _, t := range active {
-		sess := &Session{Clients: clients}
+		sess := &Session{Clients: clients, ContextPath: contextPath}
 		tStart := time.Now()
 		testErr := t.Fn(ctx, sess)
 		elapsed := time.Since(tStart)
@@ -144,6 +157,33 @@ func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
 
 	report.Duration = time.Since(start)
 	return report
+}
+
+// discoverContextPath returns the CardDAV context path. If cfg.Server.ContextPath
+// is non-empty it is returned directly. Otherwise the path is discovered by
+// issuing GET /.well-known/carddav and extracting the Location header from the
+// redirect response (RFC 6764 §5).
+func discoverContextPath(ctx context.Context, cfg *config.Config, primary *client.Client) (string, error) {
+	if cfg.Server.ContextPath != "" {
+		return cfg.Server.ContextPath, nil
+	}
+	resp, err := primary.GetNoRedirect(ctx, "/.well-known/carddav")
+	if err != nil {
+		return "", fmt.Errorf("discover context path: %w", err)
+	}
+	loc := resp.Header.Get("Location")
+	if loc == "" {
+		return "", fmt.Errorf("discover context path: /.well-known/carddav did not return a Location header")
+	}
+	// Location may be an absolute URL (e.g. https://example.com/dav/) or a path.
+	if strings.HasPrefix(loc, "http://") || strings.HasPrefix(loc, "https://") {
+		u, parseErr := url.Parse(loc)
+		if parseErr != nil {
+			return "", fmt.Errorf("discover context path: parse Location %q: %w", loc, parseErr)
+		}
+		return u.Path, nil
+	}
+	return loc, nil
 }
 
 func buildClients(cfg *config.Config) ([]*client.Client, error) {
@@ -179,8 +219,11 @@ func suiteEnabled(suites []string, suite string) bool {
 type Session struct {
 	// Clients provides one authenticated HTTP client per configured principal.
 	// Clients[0] is the primary test principal.
-	Clients  []*client.Client
-	cleanups []func(ctx context.Context)
+	Clients []*client.Client
+	// ContextPath is the CardDAV context path (e.g. "/dav/"), either configured
+	// explicitly or discovered via the /.well-known/carddav redirect.
+	ContextPath string
+	cleanups    []func(ctx context.Context)
 }
 
 // Primary returns the first client (primary test principal).

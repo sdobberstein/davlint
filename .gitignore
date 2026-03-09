@@ -17,6 +17,9 @@ results/
 go.work
 go.work.sum
 
+# Local config (contains server URL and credentials — copy from davlint.example.yaml)
+davlint.yaml
+
 # IDE
 .idea/
 .vscode/

@@ -13,6 +13,9 @@ import (
 type Config struct {
 	Server struct {
 		URL string `yaml:"url"`
+		// ContextPath is the CardDAV context path (e.g. "/dav/").
+		// If empty, it is discovered by following the /.well-known/carddav redirect.
+		ContextPath string `yaml:"context_path"`
 	} `yaml:"server"`
 	Principals []Principal `yaml:"principals"`
 	Suites     []string    `yaml:"suites"`
