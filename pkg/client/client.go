@@ -68,6 +68,31 @@ func (c *Client) GetNoRedirect(ctx context.Context, path string) (*Response, err
 	return &Response{StatusCode: resp.StatusCode, Header: resp.Header, Body: body}, nil
 }
 
+// GetNoRedirectNoAuth sends a GET request without following redirects and without credentials.
+// Use this to test server behaviour for unauthenticated clients (e.g. RFC 6764 §5 MAY flow).
+func (c *Client) GetNoRedirectNoAuth(ctx context.Context, path string) (*Response, error) {
+	noFollow := &http.Client{
+		Timeout: c.http.Timeout,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.resolve(path), http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("build request GET %s: %w", path, err)
+	}
+	resp, err := noFollow.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET (no-redirect, no-auth) %s: %w", path, err)
+	}
+	defer resp.Body.Close() //nolint:errcheck // deferred close; read error checked below
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+	return &Response{StatusCode: resp.StatusCode, Header: resp.Header, Body: body}, nil
+}
+
 // resolve returns an absolute URL for the given path relative to the base URL.
 func (c *Client) resolve(path string) string {
 	ref, err := url.Parse(path)

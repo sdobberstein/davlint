@@ -49,6 +49,43 @@ func (c *Client) do(ctx context.Context, method, path string, header http.Header
 	}, nil
 }
 
+// doNoAuth executes a raw HTTP request without credentials and returns the response with body fully read.
+func (c *Client) doNoAuth(ctx context.Context, method, path string, header http.Header, body []byte) (*Response, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.resolve(path), bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("build request %s %s: %w", method, path, err)
+	}
+	for k, vv := range header {
+		for _, v := range vv {
+			req.Header.Add(k, v)
+		}
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%s %s: %w", method, path, err)
+	}
+	defer resp.Body.Close() //nolint:errcheck // deferred close; read error checked below
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+	return &Response{StatusCode: resp.StatusCode, Header: resp.Header, Body: respBody}, nil
+}
+
+// PropfindNoAuth sends a PROPFIND request without credentials.
+// Use this to test that the server requires authentication (RFC 6764 §7 MUST).
+func (c *Client) PropfindNoAuth(ctx context.Context, path, depth string, body []byte) (*Response, error) {
+	h := http.Header{
+		"Depth":        {depth},
+		"Content-Type": {"application/xml; charset=utf-8"},
+	}
+	return c.doNoAuth(ctx, "PROPFIND", path, h, body)
+}
+
 // Options sends an OPTIONS request.
 func (c *Client) Options(ctx context.Context, path string) (*Response, error) {
 	return c.do(ctx, http.MethodOptions, path, nil, nil)
