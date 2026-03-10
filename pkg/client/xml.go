@@ -17,6 +17,8 @@ const (
 type Multistatus struct {
 	XMLName   xml.Name     `xml:"DAV: multistatus"`
 	Responses []MSResponse `xml:"response"`
+	// SyncToken is present in DAV:sync-collection REPORT responses (RFC 6578 §3.2).
+	SyncToken string `xml:"sync-token"`
 }
 
 // MSResponse is a single resource entry in a Multistatus body.
@@ -140,6 +142,44 @@ func ReportAddressbookMultiget(props [][2]string, hrefs []string) []byte {
 		fmt.Fprintf(&b, "<D:href>%s</D:href>", xmlEscape(href))
 	}
 	b.WriteString(`</C:addressbook-multiget>`)
+	return []byte(b.String())
+}
+
+// ReportSyncCollection returns a DAV:sync-collection REPORT body (RFC 6578 §3.2).
+// syncToken is the token from a previous response; pass "" for the initial sync.
+// syncLevel is "1" (one-level) or "infinite"; CardDAV servers only require "1".
+// props is the list of [namespace, localname] pairs to request per changed resource.
+func ReportSyncCollection(syncToken, syncLevel string, props [][2]string) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<D:sync-collection xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	fmt.Fprintf(&b, "<D:sync-token>%s</D:sync-token>", xmlEscape(syncToken))
+	fmt.Fprintf(&b, "<D:sync-level>%s</D:sync-level>", xmlEscape(syncLevel))
+	b.WriteString(`<D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElem(p[0], p[1]))
+	}
+	b.WriteString(`</D:prop>`)
+	b.WriteString(`</D:sync-collection>`)
+	return []byte(b.String())
+}
+
+// ReportSyncCollectionWithLimit returns a DAV:sync-collection REPORT body that
+// includes a DAV:limit/DAV:nresults element (RFC 6578 §3.7).
+// nResults is the maximum number of member entries the client wants returned.
+func ReportSyncCollectionWithLimit(syncToken, syncLevel string, nResults int, props [][2]string) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<D:sync-collection xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	fmt.Fprintf(&b, "<D:sync-token>%s</D:sync-token>", xmlEscape(syncToken))
+	fmt.Fprintf(&b, "<D:sync-level>%s</D:sync-level>", xmlEscape(syncLevel))
+	fmt.Fprintf(&b, "<D:limit><D:nresults>%d</D:nresults></D:limit>", nResults)
+	b.WriteString(`<D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElem(p[0], p[1]))
+	}
+	b.WriteString(`</D:prop>`)
+	b.WriteString(`</D:sync-collection>`)
 	return []byte(b.String())
 }
 

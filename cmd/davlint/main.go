@@ -19,6 +19,7 @@ import (
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc4918"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6350"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6352"
+	_ "github.com/sdobberstein/davlint/internal/suites/rfc6578"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6764"
 )
 

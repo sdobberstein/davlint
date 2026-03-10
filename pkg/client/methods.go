@@ -200,3 +200,16 @@ func (c *Client) ACL(ctx context.Context, path string, body []byte) (*Response, 
 	h := http.Header{"Content-Type": {"application/xml; charset=utf-8"}}
 	return c.do(ctx, "ACL", path, h, body)
 }
+
+// PropfindWithIf sends a PROPFIND request with an If state-token header.
+// token is wrapped as required by RFC 4918 §10.4: If: (<token>).
+// Use this to test that a server honours DAV:sync-token values as state tokens
+// per RFC 6578 §5.
+func (c *Client) PropfindWithIf(ctx context.Context, path, depth, token string, body []byte) (*Response, error) {
+	h := http.Header{
+		"Depth":        {depth},
+		"Content-Type": {"application/xml; charset=utf-8"},
+		"If":           {"(<" + token + ">)"},
+	}
+	return c.do(ctx, "PROPFIND", path, h, body)
+}
