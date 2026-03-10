@@ -6,6 +6,7 @@
 package rfc2426
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -82,9 +83,16 @@ func init() {
 	suite.Register(suite.Test{
 		ID:          "rfc2426.folded-line-parsed",
 		Suite:       "rfc2426",
-		Description: "PUT a vCard with a folded FN line is accepted and the full value survives a round-trip (RFC 2426 §2.6)",
+		Description: "PUT a vCard with a CRLF+SPACE folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
 		Severity:    suite.Must,
 		Fn:          testFoldedLineParsed,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc2426.folded-line-tab-parsed",
+		Suite:       "rfc2426",
+		Description: "PUT a vCard with a CRLF+TAB folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
+		Severity:    suite.Must,
+		Fn:          testFoldedLineTabParsed,
 	})
 	// §2.3: SEMI-COLON in a text value MUST be backslash-escaped.
 	suite.Register(suite.Test{
@@ -150,9 +158,9 @@ const vcardVersion21 = "BEGIN:VCARD\r\n" +
 	"N:Test;Alice;;;\r\n" +
 	"END:VCARD\r\n"
 
-// vcardFoldedFN is a valid vCard 3.0 where the FN line is folded at 75 characters
-// using CRLF + SPACE per RFC 2426 §2.6. After unfolding the full value is
-// "Alice Test User With A Very Long Full Name That Needs Folding At Seventy Five Characters".
+// vcardFoldedFN is a valid vCard 3.0 where the FN line is folded using
+// CRLF + SPACE (RFC 2425 §5.8.1). After unfolding the full FN value is
+// foldedFNExpected.
 const vcardFoldedFN = "BEGIN:VCARD\r\n" +
 	"VERSION:3.0\r\n" +
 	"UID:urn:uuid:f0000000-0000-0000-0000-000000000001\r\n" +
@@ -161,8 +169,28 @@ const vcardFoldedFN = "BEGIN:VCARD\r\n" +
 	"N:Test;Alice;;;\r\n" +
 	"END:VCARD\r\n"
 
+// vcardFoldedFNTab is identical to vcardFoldedFN but uses CRLF + TAB as the
+// fold indicator. RFC 2425 §5.8.1 explicitly permits both SPACE and TAB.
+const vcardFoldedFNTab = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:f0000000-0000-0000-0000-000000000002\r\n" +
+	"FN:Alice Test User With A Very Long Full Name That Needs Folding At Seventy\r\n" +
+	"\tFive Characters\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
 // foldedFNExpected is the unfolded FN value that must survive a round-trip.
 const foldedFNExpected = "Alice Test User With A Very Long Full Name That Needs Folding At Seventy Five Characters"
+
+// unfoldVCard removes fold indicators from a vCard body per RFC 2425 §5.8.1:
+// CRLF followed by a single SPACE or TAB is removed entirely.
+// This must be applied before checking logical property values in a GET response,
+// because a conformant server MAY re-fold its output at any position.
+func unfoldVCard(body []byte) []byte {
+	body = bytes.ReplaceAll(body, []byte("\r\n "), nil)
+	body = bytes.ReplaceAll(body, []byte("\r\n\t"), nil)
+	return body
+}
 
 // vcardEscapedSemicolon is a valid vCard 3.0 where the FN value contains a
 // backslash-escaped semicolon per RFC 2426 §2.3.
@@ -289,7 +317,22 @@ func testRejectInvalidVersion(ctx context.Context, sess *suite.Session) error {
 	return putInvalidVCard(ctx, sess, []byte(vcardVersion21), "PUT vCard with VERSION:2.1")
 }
 
+// testFoldedLineParsed verifies RFC 2425 §5.8.1 (referenced by RFC 2426 §2.6):
+// the server MUST unfold CRLF+SPACE fold indicators before parsing. The full
+// logical FN value must survive a PUT→GET round-trip. The GET response is
+// unfolded before asserting because a conformant server MAY re-fold its output.
 func testFoldedLineParsed(ctx context.Context, sess *suite.Session) error {
+	return testFoldedRoundTrip(ctx, sess, vcardFoldedFN, "folded-space.vcf", "CRLF+SPACE")
+}
+
+// testFoldedLineTabParsed verifies RFC 2425 §5.8.1: CRLF+TAB is also a valid
+// fold indicator and MUST be unfolded before parsing.
+func testFoldedLineTabParsed(ctx context.Context, sess *suite.Session) error {
+	return testFoldedRoundTrip(ctx, sess, vcardFoldedFNTab, "folded-tab.vcf", "CRLF+TAB")
+}
+
+// testFoldedRoundTrip is the shared implementation for fold round-trip tests.
+func testFoldedRoundTrip(ctx context.Context, sess *suite.Session, vcard, filename, foldKind string) error {
 	c := sess.Primary()
 	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
 	if err != nil {
@@ -301,22 +344,28 @@ func testFoldedLineParsed(ctx context.Context, sess *suite.Session) error {
 	}
 	sess.AddCleanup(cleanup)
 
-	resp, err := c.Put(ctx, colURL+"folded.vcf", "text/vcard; charset=utf-8", []byte(vcardFoldedFN))
+	resp, err := c.Put(ctx, colURL+filename, "text/vcard; charset=utf-8", []byte(vcard))
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != 201 {
-		return fmt.Errorf("PUT vCard with folded FN: got %d, want 201", resp.StatusCode)
+		return fmt.Errorf("PUT vCard with %s folded FN: got %d, want 201", foldKind, resp.StatusCode)
 	}
 
-	resp, err = c.Get(ctx, colURL+"folded.vcf")
+	resp, err = c.Get(ctx, colURL+filename)
 	if err != nil {
 		return err
 	}
 	if err := assert.StatusCode(resp, 200); err != nil {
 		return err
 	}
-	return assert.BodyHas(resp.Body, foldedFNExpected)
+	// Unfold before asserting: the server MAY re-fold its output at any position,
+	// so we must not check raw bytes directly (RFC 2425 §5.8.1).
+	unfolded := unfoldVCard(resp.Body)
+	if err := assert.BodyHas(unfolded, foldedFNExpected); err != nil {
+		return fmt.Errorf("%s fold round-trip: full FN value not found after unfolding response: %w", foldKind, err)
+	}
+	return nil
 }
 
 func testSemicolonEscapeAccepted(ctx context.Context, sess *suite.Session) error {
