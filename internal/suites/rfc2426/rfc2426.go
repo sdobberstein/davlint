@@ -10,6 +10,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
+	"strings"
 
 	"github.com/sdobberstein/davlint/pkg/assert"
 	"github.com/sdobberstein/davlint/pkg/client"
@@ -344,6 +346,11 @@ func testFoldedRoundTrip(ctx context.Context, sess *suite.Session, vcard, filena
 	}
 	sess.AddCleanup(cleanup)
 
+	if sess.Verbose {
+		fmt.Fprintf(os.Stderr, "\n[%s fold / SENT PUT body]\n%s\n",
+			foldKind, showCRLF([]byte(vcard)))
+	}
+
 	resp, err := c.Put(ctx, colURL+filename, "text/vcard; charset=utf-8", []byte(vcard))
 	if err != nil {
 		return err
@@ -359,13 +366,33 @@ func testFoldedRoundTrip(ctx context.Context, sess *suite.Session, vcard, filena
 	if err := assert.StatusCode(resp, 200); err != nil {
 		return err
 	}
+
+	unfolded := unfoldVCard(resp.Body)
+
+	if sess.Verbose {
+		fmt.Fprintf(os.Stderr, "[%s fold / RECEIVED raw GET body]\n%s\n",
+			foldKind, showCRLF(resp.Body))
+		fmt.Fprintf(os.Stderr, "[%s fold / RECEIVED after unfold]\n%s\n",
+			foldKind, showCRLF(unfolded))
+		fmt.Fprintf(os.Stderr, "[%s fold / LOOKING FOR]\n%s\n",
+			foldKind, foldedFNExpected)
+	}
+
 	// Unfold before asserting: the server MAY re-fold its output at any position,
 	// so we must not check raw bytes directly (RFC 2425 §5.8.1).
-	unfolded := unfoldVCard(resp.Body)
 	if err := assert.BodyHas(unfolded, foldedFNExpected); err != nil {
 		return fmt.Errorf("%s fold round-trip: full FN value not found after unfolding response: %w", foldKind, err)
 	}
 	return nil
+}
+
+// showCRLF returns a human-readable version of body with CRLF shown as "↵\n"
+// and TAB shown as "→" so fold indicators are visible in verbose output.
+func showCRLF(body []byte) string {
+	s := string(body)
+	s = strings.ReplaceAll(s, "\r\n", "↵\n")
+	s = strings.ReplaceAll(s, "\t", "→")
+	return s
 }
 
 func testSemicolonEscapeAccepted(ctx context.Context, sess *suite.Session) error {

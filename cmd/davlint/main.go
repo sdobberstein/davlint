@@ -25,7 +25,10 @@ import (
 
 const version = "0.1.0-dev"
 
-var configFile string
+var (
+	configFile string
+	verbose    bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:     "davlint",
@@ -66,6 +69,9 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("load config: %w", err)
 		}
+		if verbose {
+			cfg.Options.Verbose = true
+		}
 
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer cancel()
@@ -82,6 +88,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "davlint.yaml", "config file path")
+	runCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "print raw sent/received values for diagnostic output")
 	rootCmd.AddCommand(listCmd, runCmd)
 }
 

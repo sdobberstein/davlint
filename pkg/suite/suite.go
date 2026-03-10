@@ -130,7 +130,7 @@ func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
 	}
 
 	for _, t := range active {
-		sess := &Session{Clients: clients, ContextPath: contextPath}
+		sess := &Session{Clients: clients, ContextPath: contextPath, Verbose: cfg.Options.Verbose}
 		tStart := time.Now()
 		testErr := t.Fn(ctx, sess)
 		elapsed := time.Since(tStart)
@@ -223,7 +223,9 @@ type Session struct {
 	// ContextPath is the CardDAV context path (e.g. "/dav/"), either configured
 	// explicitly or discovered via the /.well-known/carddav redirect.
 	ContextPath string
-	cleanups    []func(ctx context.Context)
+	// Verbose enables per-test diagnostic output to stderr.
+	Verbose  bool
+	cleanups []func(ctx context.Context)
 }
 
 // Primary returns the first client (primary test principal).

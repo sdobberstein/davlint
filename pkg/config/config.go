@@ -29,6 +29,7 @@ type Config struct {
 		Cleanup  bool          `yaml:"cleanup"`
 		Timeout  time.Duration `yaml:"timeout"`
 		FailFast bool          `yaml:"fail_fast"`
+		Verbose  bool          `yaml:"verbose"`
 	} `yaml:"options"`
 }
 
