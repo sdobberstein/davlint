@@ -46,6 +46,54 @@ func init() {
 		Severity:    suite.Must,
 		Fn:          testEmailRoundtrip,
 	})
+	// §3.1.1 / §1: FN MUST be present.
+	suite.Register(suite.Test{
+		ID:          "rfc2426.reject-missing-fn",
+		Suite:       "rfc2426",
+		Description: "PUT a vCard 3.0 without FN is rejected with 4xx (RFC 2426 §3.1.1 MUST)",
+		Severity:    suite.Must,
+		Fn:          testRejectMissingFN,
+	})
+	// §3.1.2 / §1: N MUST be present.
+	suite.Register(suite.Test{
+		ID:          "rfc2426.reject-missing-n",
+		Suite:       "rfc2426",
+		Description: "PUT a vCard 3.0 without N is rejected with 4xx (RFC 2426 §3.1.2 MUST)",
+		Severity:    suite.Must,
+		Fn:          testRejectMissingN,
+	})
+	// §3.6.9 / §1: VERSION MUST be present.
+	suite.Register(suite.Test{
+		ID:          "rfc2426.reject-missing-version",
+		Suite:       "rfc2426",
+		Description: "PUT a vCard without VERSION is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
+		Severity:    suite.Must,
+		Fn:          testRejectMissingVersion,
+	})
+	// §3.6.9: VERSION value MUST be "3.0" for this spec.
+	suite.Register(suite.Test{
+		ID:          "rfc2426.reject-invalid-version",
+		Suite:       "rfc2426",
+		Description: "PUT a vCard with VERSION:2.1 is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
+		Severity:    suite.Must,
+		Fn:          testRejectInvalidVersion,
+	})
+	// §2.6 / MIME-DIR: folded lines MUST be unfolded before parsing.
+	suite.Register(suite.Test{
+		ID:          "rfc2426.folded-line-parsed",
+		Suite:       "rfc2426",
+		Description: "PUT a vCard with a folded FN line is accepted and the full value survives a round-trip (RFC 2426 §2.6)",
+		Severity:    suite.Must,
+		Fn:          testFoldedLineParsed,
+	})
+	// §2.3: SEMI-COLON in a text value MUST be backslash-escaped.
+	suite.Register(suite.Test{
+		ID:          "rfc2426.semicolon-escape-accepted",
+		Suite:       "rfc2426",
+		Description: "PUT a vCard with a backslash-escaped semicolon in FN is accepted (RFC 2426 §2.3 MUST)",
+		Severity:    suite.Must,
+		Fn:          testSemicolonEscapeAccepted,
+	})
 }
 
 func discoverHomeSet(ctx context.Context, c *client.Client, contextPath string) (string, error) {
@@ -70,6 +118,60 @@ func makeTestCollection(ctx context.Context, c *client.Client, homeSet string) (
 	}
 	return colURL, cleanup, nil
 }
+
+// --- Local fixtures ---
+//
+// These represent malformed or edge-case vCards used only within this suite.
+// They intentionally omit required fields or exercise format corner-cases and
+// are not suitable for use as general-purpose test data.
+
+// vcardNoFN is missing the required FN property (RFC 2426 §3.1.1).
+const vcardNoFN = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// vcardNoN is missing the required N property (RFC 2426 §3.1.2).
+const vcardNoN = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"FN:Alice Test\r\n" +
+	"END:VCARD\r\n"
+
+// vcardNoVersion is missing the required VERSION property (RFC 2426 §3.6.9).
+const vcardNoVersion = "BEGIN:VCARD\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// vcardVersion21 uses VERSION:2.1, which is not valid for RFC 2426 (§3.6.9 requires "3.0").
+const vcardVersion21 = "BEGIN:VCARD\r\n" +
+	"VERSION:2.1\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// vcardFoldedFN is a valid vCard 3.0 where the FN line is folded at 75 characters
+// using CRLF + SPACE per RFC 2426 §2.6. After unfolding the full value is
+// "Alice Test User With A Very Long Full Name That Needs Folding At Seventy Five Characters".
+const vcardFoldedFN = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:f0000000-0000-0000-0000-000000000001\r\n" +
+	"FN:Alice Test User With A Very Long Full Name That Needs Folding At Seventy\r\n" +
+	" Five Characters\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// foldedFNExpected is the unfolded FN value that must survive a round-trip.
+const foldedFNExpected = "Alice Test User With A Very Long Full Name That Needs Folding At Seventy Five Characters"
+
+// vcardEscapedSemicolon is a valid vCard 3.0 where the FN value contains a
+// backslash-escaped semicolon per RFC 2426 §2.3.
+const vcardEscapedSemicolon = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:e0000000-0000-0000-0000-000000000001\r\n" +
+	`FN:Alice\; The Test` + "\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
 
 // --- Tests ---
 
@@ -145,6 +247,108 @@ func testGetAcceptV3(ctx context.Context, sess *suite.Session) error {
 		return err
 	}
 	return assert.BodyHas(resp.Body, "VERSION:3.0")
+}
+
+// putInvalidVCard is a helper that PUTs body into a fresh collection and asserts
+// the response is a 4xx client error. It handles collection setup and cleanup.
+func putInvalidVCard(ctx context.Context, sess *suite.Session, body []byte, desc string) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"invalid.vcf", "text/vcard; charset=utf-8", body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 400 || resp.StatusCode >= 500 {
+		return fmt.Errorf("%s: got %d, want 4xx", desc, resp.StatusCode)
+	}
+	return nil
+}
+
+func testRejectMissingFN(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardNoFN), "PUT vCard without FN")
+}
+
+func testRejectMissingN(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardNoN), "PUT vCard without N")
+}
+
+func testRejectMissingVersion(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardNoVersion), "PUT vCard without VERSION")
+}
+
+func testRejectInvalidVersion(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardVersion21), "PUT vCard with VERSION:2.1")
+}
+
+func testFoldedLineParsed(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"folded.vcf", "text/vcard; charset=utf-8", []byte(vcardFoldedFN))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard with folded FN: got %d, want 201", resp.StatusCode)
+	}
+
+	resp, err = c.Get(ctx, colURL+"folded.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	return assert.BodyHas(resp.Body, foldedFNExpected)
+}
+
+func testSemicolonEscapeAccepted(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"escape.vcf", "text/vcard; charset=utf-8", []byte(vcardEscapedSemicolon))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard with escaped semicolon in FN: got %d, want 201", resp.StatusCode)
+	}
+
+	resp, err = c.Get(ctx, colURL+"escape.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// The stored value must contain "Alice" — the part before the escaped semicolon.
+	// This confirms the server parsed and preserved the FN rather than splitting on it.
+	return assert.BodyHas(resp.Body, "Alice")
 }
 
 func testEmailRoundtrip(ctx context.Context, sess *suite.Session) error {
