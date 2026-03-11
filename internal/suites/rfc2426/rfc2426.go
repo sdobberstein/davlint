@@ -160,24 +160,28 @@ const vcardVersion21 = "BEGIN:VCARD\r\n" +
 	"N:Test;Alice;;;\r\n" +
 	"END:VCARD\r\n"
 
-// vcardFoldedFN is a valid vCard 3.0 where the FN line is folded using
-// CRLF + SPACE (RFC 2425 §5.8.1). After unfolding the full FN value is
-// foldedFNExpected.
+// vcardFoldedFN is a valid vCard 3.0 where the FN line is folded at 75
+// characters using CRLF + SPACE (RFC 2425 §5.8.1). The fold is inserted
+// between 'y' and ' ' in "Seventy Five", so the continuation line begins
+// with two spaces: the first is the fold indicator (removed on unfold), the
+// second is the original space that belongs to the value.
+// After unfolding the full FN value is foldedFNExpected.
 const vcardFoldedFN = "BEGIN:VCARD\r\n" +
 	"VERSION:3.0\r\n" +
 	"UID:urn:uuid:f0000000-0000-0000-0000-000000000001\r\n" +
 	"FN:Alice Test User With A Very Long Full Name That Needs Folding At Seventy\r\n" +
-	" Five Characters\r\n" +
+	"  Five Characters\r\n" +
 	"N:Test;Alice;;;\r\n" +
 	"END:VCARD\r\n"
 
 // vcardFoldedFNTab is identical to vcardFoldedFN but uses CRLF + TAB as the
 // fold indicator. RFC 2425 §5.8.1 explicitly permits both SPACE and TAB.
+// The continuation begins with TAB (fold indicator) + SPACE (original value char).
 const vcardFoldedFNTab = "BEGIN:VCARD\r\n" +
 	"VERSION:3.0\r\n" +
 	"UID:urn:uuid:f0000000-0000-0000-0000-000000000002\r\n" +
 	"FN:Alice Test User With A Very Long Full Name That Needs Folding At Seventy\r\n" +
-	"\tFive Characters\r\n" +
+	"\t Five Characters\r\n" +
 	"N:Test;Alice;;;\r\n" +
 	"END:VCARD\r\n"
 
