@@ -126,6 +126,29 @@ func ReportAddressbookQueryPropFilter(propName, textMatch string) []byte {
 	))
 }
 
+// ReportAddressbookQueryPropFilterCollation returns a C:prop-filter XML
+// fragment with an explicit collation attribute on C:text-match (RFC 6352 §8.3,
+// §8.6.4). Use this to test collation-specific query behaviour.
+// Pass the result as the filter argument to ReportAddressbookQuery.
+func ReportAddressbookQueryPropFilterCollation(propName, textMatch, collation string) []byte {
+	return []byte(fmt.Sprintf(
+		`<C:prop-filter name=%q><C:text-match collation=%q>%s</C:text-match></C:prop-filter>`,
+		propName, collation, xmlEscape(textMatch),
+	))
+}
+
+// ReportAddressbookQueryParamFilter returns a C:prop-filter XML fragment that
+// restricts results by matching a specific parameter of a vCard property
+// (RFC 6352 §8.6.4). paramMatch is matched against the parameter value using
+// the default collation (i;ascii-casemap, contains).
+// Pass the result as the filter argument to ReportAddressbookQuery.
+func ReportAddressbookQueryParamFilter(propName, paramName, paramMatch string) []byte {
+	return []byte(fmt.Sprintf(
+		`<C:prop-filter name=%q><C:param-filter name=%q><C:text-match>%s</C:text-match></C:param-filter></C:prop-filter>`,
+		propName, paramName, xmlEscape(paramMatch),
+	))
+}
+
 // ReportAddressbookMultiget returns a CardDAV addressbook-multiget REPORT body (RFC 6352 §8.7).
 // props is the list of [namespace, localname] pairs to request per resource;
 // hrefs is the list of absolute-path resource URLs to retrieve.
