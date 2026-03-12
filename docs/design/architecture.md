@@ -129,6 +129,35 @@ Per-RFC coverage docs (in `docs/coverage/`) use four statuses:
 | `not covered` | No test exists |
 | `deferred` | Intentionally out of scope — reason documented |
 
+## Advertisement vs. Behavior
+
+Two distinct categories of test exist and should be treated differently:
+
+**Advertisement tests** — does the server *claim* to support X?
+- Examples: `DAV: 3` in the OPTIONS header, `addressbook` in DAV header, `DAV:sync-collection` in `supported-report-set`
+- A failure here means the server is not correctly advertising its capabilities
+
+**Behavioral tests** — does the server *actually behave correctly* for X?
+- Examples: sync-token changes after PUT, MKCOL returns 409 with missing parent, stale token in If header returns 412
+- A failure here means the server has a real conformance bug
+
+These are tested independently. A mismatch in either direction is meaningful:
+
+- **Advertises support but fails behavioral tests** — the more serious problem; the server is lying about its capabilities
+- **Passes behavioral tests but does not advertise support** — worth flagging but not a hard failure; the output should say "all RFC 4918 behavioral tests passed but server does not advertise DAV class 3 — consider adding `3` to your DAV header"
+
+Behavioral tests always run regardless of what the server advertises. Advertisement tests are a separate layer on top.
+
+## RFC 2518 (Obsoleted by RFC 4918)
+
+RFC 2518 is the original WebDAV specification (1999), fully obsoleted by RFC 4918 (2007). davlint does not have a separate `rfc2518` test suite and will not add one. Reasons:
+
+- Any server worth testing today should implement RFC 4918
+- RFC 4918 behavioral tests catch RFC 2518-era servers naturally — they will fail tests for behavior that changed between the two specs
+- RFC 4918 §18 introduced DAV class `3` specifically to distinguish RFC 4918-compliant servers from RFC 2518-only servers; the `DAV: 3` advertisement test in the rfc4918 suite covers this
+
+If a server only implements RFC 2518, it will fail RFC 4918 behavioral tests and that is the correct and intended outcome.
+
 ## Future Protocols
 
 CalDAV (RFC 4791) is the primary planned addition. The architecture is protocol-agnostic — adding CalDAV means registering new test suites and adding `"caldav"` to the relevant `Protocols` fields.
@@ -144,6 +173,31 @@ Three options under consideration:
 3. **Auto-discover (preferred candidate)** — if no `--protocol` is given, run `--discover` automatically and let the server's `OPTIONS`/DAV header determine what to test. Zero-configuration path: `davlint run` just works.
 
 Decision pending. Leaning toward option 3 but needs validation against real-world usage.
+
+### SHOULD and MAY violations — failures or warnings?
+
+In lint and conformance mode, MUST/MUST NOT violations are always hard failures (exit code 1). The question is how to treat SHOULD and MAY violations:
+
+- **Option 1: Always warnings** — SHOULD violations never cause a non-zero exit code; they appear in output with a distinct visual treatment (e.g. `WARN` instead of `FAIL`)
+- **Option 2: Mode-dependent** — SHOULD violations are warnings in lint mode, hard failures in conformance mode
+- **Option 3: Severity flag** — controlled by a `--severity` flag (already exists in config); `--severity must` only fails on MUSTs, `--severity should` also fails on SHOULDs
+
+Option 3 is already partially implemented (config has `severity` field) but the behavior isn't fully designed. The output format needs a `WARN` state distinct from `PASS`, `FAIL`, and `SKIP`.
+
+Decision pending.
+
+### Beyond explicit MUST statements — what else should we test?
+
+Several categories of correctness exist beyond what the RFCs spell out as explicit MUSTs:
+
+- **Inherited HTTP semantics** — RFCs say "MUST follow HTTP/1.1" without repeating every HTTP rule. Examples: `Content-Length` matching body, `Allow` header on 405 responses, `Location` on 201 responses. Real servers get these wrong.
+- **Interoperability correctness** — technically compliant but client-breaking behavior: unquoted ETag values, malformed XML namespaces, relative `DAV:href` when clients expect absolute URIs.
+- **Error response quality** — a server that returns 400 with an empty body instead of a `DAV:error` with the correct precondition element is technically returning an error but clients cannot act on it.
+- **Security-adjacent behavior** — timing differences between "resource doesn't exist" and "resource exists but you can't see it" (information leakage); whether unauthenticated requests reveal collection structure.
+
+These don't map cleanly to a single RFC section. The question is whether to treat them as a separate test category (e.g. tagged `http-correctness`, `interop`, `security`) or fold them into existing RFC suites where they logically belong.
+
+Decision pending.
 
 ## Future Work
 
