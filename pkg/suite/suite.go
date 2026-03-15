@@ -24,6 +24,13 @@ const (
 	May    Severity = "may"
 )
 
+// RFCRef is a citation to a specific RFC section.
+type RFCRef struct {
+	RFC     string // e.g. "RFC 6578"
+	Section string // e.g. "§5"
+	URL     string // e.g. "https://www.rfc-editor.org/rfc/rfc6578#section-5"
+}
+
 // Test is a single conformance test that can be registered with the suite.
 type Test struct {
 	// ID is a unique dot-path identifier, e.g. "RFC4918.propfind-allprop".
@@ -34,26 +41,58 @@ type Test struct {
 	Description string
 	// Severity is the RFC requirement level.
 	Severity Severity
+	// Tags are optional labels used to filter tests (e.g. ["sync", "conditional"]).
+	// Nil means untagged — the test always runs unless filtered by suite/mode/etc.
+	Tags []string
+	// Mode is "" or "lint" (runs in both modes) or "conformance" (skipped in lint mode).
+	Mode string
+	// MinPrincipals is the minimum number of configured principals required.
+	// 0 means no requirement. 2 means Secondary() must be available.
+	MinPrincipals int
+	// References are RFC section citations for this test.
+	References []RFCRef
 	// Fn runs the test against the server. Return non-nil to fail.
 	Fn func(ctx context.Context, sess *Session) error
 }
 
+// SkipReason describes why a test was skipped.
+type SkipReason string
+
+// Skip reason constants. SkipNone means the test was not skipped; all other
+// values identify the filter that caused the skip.
+const (
+	SkipNone       SkipReason = ""
+	SkipConfig     SkipReason = "config"     // in cfg.Skip list
+	SkipSuite      SkipReason = "suite"      // suite not in active set
+	SkipSeverity   SkipReason = "severity"   // below configured threshold
+	SkipTag        SkipReason = "tag"        // excluded by tag filter
+	SkipMode       SkipReason = "mode"       // conformance-only test in lint mode
+	SkipPrincipals SkipReason = "principals" // MinPrincipals not met
+)
+
 // Result is the outcome of running a single Test.
 type Result struct {
-	Test    Test
-	Passed  bool
-	Skipped bool
-	Err     error
-	Elapsed time.Duration
+	Test       Test
+	Passed     bool
+	Skipped    bool
+	SkipReason SkipReason
+	Err        error
+	Elapsed    time.Duration
 }
 
 // Report summarises a complete test run.
 type Report struct {
-	Results  []Result
-	Passed   int
-	Failed   int
-	Skipped  int
-	Duration time.Duration
+	Results           []Result
+	Passed            int
+	Failed            int
+	Skipped           int
+	SkippedConfig     int
+	SkippedSuite      int
+	SkippedSeverity   int
+	SkippedTag        int
+	SkippedMode       int
+	SkippedPrincipals int
+	Duration          time.Duration
 }
 
 var (
@@ -63,7 +102,7 @@ var (
 
 // Register adds a Test to the global registry.
 // It is safe to call from init() functions in multiple packages.
-func Register(t Test) {
+func Register(t Test) { //nolint:gocritic // hugeParam: Test is intentionally passed by value as a literal
 	mu.Lock()
 	defer mu.Unlock()
 	registry = append(registry, t)
@@ -78,6 +117,27 @@ func All() []Test {
 	return out
 }
 
+// Protocol bundle definitions: map protocol name → suite IDs.
+var bundles = map[string][]string{
+	"webdav":  {"rfc4918"},
+	"carddav": {"rfc4918", "rfc6352", "rfc6578", "rfc6764", "rfc2426"},
+	"caldav":  {"rfc4918", "rfc4791", "rfc6578", "rfc6764"},
+}
+
+// Default excluded tags per protocol (optional features).
+var bundleExcludeTags = map[string][]string{
+	"webdav":  {"locking", "acl", "quota"},
+	"carddav": {"locking", "acl", "quota"},
+	"caldav":  {"locking", "acl", "quota"},
+}
+
+// severityOrder maps severity names to a comparable integer (higher = more permissive).
+var severityOrder = map[Severity]int{
+	Must:   0,
+	Should: 1,
+	May:    2,
+}
+
 // Run executes the given tests against the server described by cfg and returns
 // a Report. If there are no tests, it returns immediately without connecting.
 func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
@@ -89,15 +149,75 @@ func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
 		skipSet[id] = true
 	}
 
-	// Filter to tests whose suites are enabled and that are not skipped.
-	var active []Test
-	for _, t := range tests {
-		if skipSet[t.ID] || !suiteEnabled(cfg.Suites, t.Suite) {
-			report.Results = append(report.Results, Result{Test: t, Skipped: true})
-			report.Skipped++
-			continue
+	// Resolve active suites from protocol bundle + explicit suites.
+	activeSuites := cfg.Suites
+	var effectiveExcludeTags []string
+	if cfg.Protocol != "" {
+		activeSuites = mergeSuites(bundles[cfg.Protocol], cfg.Suites)
+		// Merge default exclude tags for protocol unless user explicitly opted in via Tags.
+		for _, tag := range bundleExcludeTags[cfg.Protocol] {
+			if !containsString(cfg.Tags, tag) {
+				effectiveExcludeTags = append(effectiveExcludeTags, tag)
+			}
 		}
-		active = append(active, t)
+	}
+	for _, tag := range cfg.ExcludeTags {
+		if !containsString(effectiveExcludeTags, tag) {
+			effectiveExcludeTags = append(effectiveExcludeTags, tag)
+		}
+	}
+
+	// Resolve severity threshold.
+	thresholdOrder, ok := severityOrder[Severity(cfg.Severity)]
+	if !ok {
+		thresholdOrder = severityOrder[Must]
+	}
+
+	// In discover mode, connect early so we can update activeSuites from the
+	// DAV header before running the pre-filter.
+	var clients []*client.Client
+	var unauthed *client.Client
+	if cfg.Options.Discover {
+		c, err := buildClients(cfg)
+		if err != nil {
+			return connectError(report, start, "build clients: %w", err)
+		}
+		clients = c
+		u, err := client.New(cfg.Server.URL, "", "", cfg.Options.Timeout)
+		if err != nil {
+			return connectError(report, start, "build unauthenticated client: %w", err)
+		}
+		unauthed = u
+		discovered, discErr := discoverSuites(ctx, cfg, clients[0])
+		if discErr != nil {
+			discovered = nil // non-fatal: proceed with existing suite list
+		}
+		if len(discovered) > 0 {
+			activeSuites = mergeSuites(activeSuites, discovered)
+		}
+	}
+
+	// Pre-filter: config, suite, severity, tag, mode.
+	// MinPrincipals is checked per-test at run time after clients are built.
+	var active []Test
+	for i := range tests {
+		t := &tests[i]
+		switch {
+		case skipSet[t.ID]:
+			report.addSkip(t, SkipConfig)
+		case !suiteEnabled(activeSuites, t.Suite):
+			report.addSkip(t, SkipSuite)
+		case severityOrder[t.Severity] > thresholdOrder:
+			report.addSkip(t, SkipSeverity)
+		case len(cfg.Tags) > 0 && !hasAnyTag(t.Tags, cfg.Tags):
+			report.addSkip(t, SkipTag)
+		case hasAnyTag(t.Tags, effectiveExcludeTags):
+			report.addSkip(t, SkipTag)
+		case t.Mode == "conformance" && cfg.Mode != "conformance":
+			report.addSkip(t, SkipMode)
+		default:
+			active = append(active, *t)
+		}
 	}
 
 	if len(active) == 0 {
@@ -105,22 +225,24 @@ func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
 		return report
 	}
 
-	clients, err := buildClients(cfg)
-	if err != nil {
-		report.Results = append(report.Results, Result{
-			Test:   Test{ID: "_connection", Description: "connect to server"},
-			Passed: false,
-			Err:    fmt.Errorf("build clients: %w", err),
-		})
-		report.Failed = 1
-		report.Duration = time.Since(start)
-		return report
+	// Build clients on non-discover path.
+	if clients == nil {
+		c, err := buildClients(cfg)
+		if err != nil {
+			return connectError(report, start, "build clients: %w", err)
+		}
+		clients = c
+		u, err := client.New(cfg.Server.URL, "", "", cfg.Options.Timeout)
+		if err != nil {
+			return connectError(report, start, "build unauthenticated client: %w", err)
+		}
+		unauthed = u
 	}
 
 	contextPath, err := discoverContextPath(ctx, cfg, clients[0])
 	if err != nil {
 		report.Results = append(report.Results, Result{
-			Test:   Test{ID: "_discovery", Description: "discover CardDAV context path"},
+			Test:   Test{ID: "_discovery", Description: "discover context path"},
 			Passed: false,
 			Err:    err,
 		})
@@ -129,18 +251,30 @@ func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
 		return report
 	}
 
-	for _, t := range active {
-		sess := &Session{Clients: clients, ContextPath: contextPath, Verbose: cfg.Options.Verbose}
+	for i := range active {
+		t := &active[i]
+		// MinPrincipals check at run time.
+		if t.MinPrincipals > len(clients) {
+			report.addSkip(t, SkipPrincipals)
+			continue
+		}
+
+		sess := &Session{
+			Clients:     clients,
+			unauthed:    unauthed,
+			ContextPath: contextPath,
+			Verbose:     cfg.Options.Verbose,
+		}
 		tStart := time.Now()
 		testErr := t.Fn(ctx, sess)
 		elapsed := time.Since(tStart)
 
 		// Run cleanups in LIFO order.
-		for i := len(sess.cleanups) - 1; i >= 0; i-- {
-			sess.cleanups[i](ctx)
+		for j := len(sess.cleanups) - 1; j >= 0; j-- {
+			sess.cleanups[j](ctx)
 		}
 
-		res := Result{Test: t, Elapsed: elapsed}
+		res := Result{Test: *t, Elapsed: elapsed}
 		if testErr != nil {
 			res.Err = testErr
 			report.Failed++
@@ -159,7 +293,39 @@ func Run(ctx context.Context, cfg *config.Config, tests []Test) *Report {
 	return report
 }
 
-// discoverContextPath returns the CardDAV context path. If cfg.Server.ContextPath
+// connectError records a connection failure result and returns the report.
+func connectError(report *Report, start time.Time, format string, err error) *Report {
+	report.Results = append(report.Results, Result{
+		Test:   Test{ID: "_connection", Description: "connect to server"},
+		Passed: false,
+		Err:    fmt.Errorf(format, err),
+	})
+	report.Failed = 1
+	report.Duration = time.Since(start)
+	return report
+}
+
+// addSkip records a skipped result and increments the relevant counter.
+func (r *Report) addSkip(t *Test, reason SkipReason) { //nolint:gocritic // pointer receiver; t is *Test to avoid copy
+	r.Results = append(r.Results, Result{Test: *t, Skipped: true, SkipReason: reason})
+	r.Skipped++
+	switch reason {
+	case SkipConfig:
+		r.SkippedConfig++
+	case SkipSuite:
+		r.SkippedSuite++
+	case SkipSeverity:
+		r.SkippedSeverity++
+	case SkipTag:
+		r.SkippedTag++
+	case SkipMode:
+		r.SkippedMode++
+	case SkipPrincipals:
+		r.SkippedPrincipals++
+	}
+}
+
+// discoverContextPath returns the context path. If cfg.Server.ContextPath
 // is non-empty it is returned directly. Otherwise the path is discovered by
 // issuing GET /.well-known/carddav and extracting the Location header from the
 // redirect response (RFC 6764 §5).
@@ -184,6 +350,46 @@ func discoverContextPath(ctx context.Context, cfg *config.Config, primary *clien
 		return u.Path, nil
 	}
 	return loc, nil
+}
+
+// davTokenSuites maps DAV header tokens to suite IDs.
+var davTokenSuites = map[string][]string{
+	"2":               {"rfc4918"},
+	"access-control":  {"rfc3744"},
+	"addressbook":     {"rfc6352", "rfc2426"},
+	"calendar-access": {"rfc4791"},
+	"sync-collection": {"rfc6578"},
+	"extended-mkcol":  {"rfc5689"},
+}
+
+// discoverSuites queries OPTIONS on the context path and maps DAV tokens to suite IDs.
+func discoverSuites(ctx context.Context, cfg *config.Config, primary *client.Client) ([]string, error) {
+	path := cfg.Server.ContextPath
+	if path == "" {
+		path = "/"
+	}
+	resp, err := primary.Options(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("discover suites: OPTIONS %s: %w", path, err)
+	}
+	dav := resp.Header.Get("DAV")
+	if dav == "" {
+		return nil, nil
+	}
+	var discovered []string
+	seen := make(map[string]bool)
+	for _, token := range strings.Split(dav, ",") {
+		token = strings.TrimSpace(token)
+		if suiteIDs, ok := davTokenSuites[token]; ok {
+			for _, id := range suiteIDs {
+				if !seen[id] {
+					seen[id] = true
+					discovered = append(discovered, id)
+				}
+			}
+		}
+	}
+	return discovered, nil
 }
 
 func buildClients(cfg *config.Config) ([]*client.Client, error) {
@@ -215,13 +421,56 @@ func suiteEnabled(suites []string, suite string) bool {
 	return false
 }
 
+// mergeSuites returns a deduplicated union of two suite ID slices, preserving order.
+func mergeSuites(a, b []string) []string {
+	seen := make(map[string]bool, len(a)+len(b))
+	var out []string
+	for _, s := range a {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	for _, s := range b {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// hasAnyTag reports whether tags contains any element from targets.
+func hasAnyTag(tags, targets []string) bool {
+	for _, tag := range tags {
+		for _, t := range targets {
+			if tag == t {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// containsString reports whether slice contains s.
+func containsString(slice []string, s string) bool {
+	for _, v := range slice {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 // Session holds per-test runtime state: HTTP clients and registered cleanups.
 type Session struct {
 	// Clients provides one authenticated HTTP client per configured principal.
 	// Clients[0] is the primary test principal.
 	Clients []*client.Client
-	// ContextPath is the CardDAV context path (e.g. "/dav/"), either configured
-	// explicitly or discovered via the /.well-known/carddav redirect.
+	// unauthed is a client with no credentials against the same server.
+	unauthed *client.Client
+	// ContextPath is the DAV context path (e.g. "/dav/"), either configured
+	// explicitly or discovered via the well-known redirect.
 	ContextPath string
 	// Verbose enables per-test diagnostic output to stderr.
 	Verbose  bool
@@ -231,6 +480,21 @@ type Session struct {
 // Primary returns the first client (primary test principal).
 func (s *Session) Primary() *client.Client {
 	return s.Clients[0]
+}
+
+// Secondary returns the second configured principal's client.
+// Panics if fewer than 2 principals are configured.
+// Tests should only call this if MinPrincipals >= 2.
+func (s *Session) Secondary() *client.Client {
+	if len(s.Clients) < 2 {
+		panic("davlint: Session.Secondary() called but fewer than 2 principals are configured")
+	}
+	return s.Clients[1]
+}
+
+// Unauthenticated returns a client with no credentials against the same server.
+func (s *Session) Unauthenticated() *client.Client {
+	return s.unauthed
 }
 
 // AddCleanup registers fn to run after the test completes, in LIFO order.
