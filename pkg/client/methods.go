@@ -208,6 +208,23 @@ func (c *Client) ACL(ctx context.Context, path string, body []byte) (*Response, 
 	return c.do(ctx, "ACL", path, h, body)
 }
 
+// PutConditional sends a PUT request with Content-Type and additional conditional
+// headers (e.g. If-Match, If-None-Match, If-Unmodified-Since). cond is merged
+// with the Content-Type header; callers must not set Content-Type in cond.
+func (c *Client) PutConditional(ctx context.Context, path, contentType string, cond http.Header, body []byte) (*Response, error) {
+	h := http.Header{"Content-Type": {contentType}}
+	for k, vv := range cond {
+		h[k] = vv
+	}
+	return c.do(ctx, http.MethodPut, path, h, body)
+}
+
+// GetConditional sends a GET request with conditional headers
+// (e.g. If-None-Match, If-Modified-Since).
+func (c *Client) GetConditional(ctx context.Context, path string, cond http.Header) (*Response, error) {
+	return c.do(ctx, http.MethodGet, path, cond, nil)
+}
+
 // PropfindWithIf sends a PROPFIND request with an If state-token header.
 // token is wrapped as required by RFC 4918 §10.4: If: (<token>).
 // Use this to test that a server honours DAV:sync-token values as state tokens

@@ -24,6 +24,7 @@ import (
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6352"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6578"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6764"
+	_ "github.com/sdobberstein/davlint/internal/suites/rfc7232"
 )
 
 const version = "0.1.0-dev"
@@ -257,9 +258,9 @@ func matchesSelector(id, sel string) bool {
 
 // suiteInProtocol reports whether the given suite ID belongs to the named protocol bundle.
 var protocolBundles = map[string][]string{
-	"webdav":  {"rfc4918"},
-	"carddav": {"rfc4918", "rfc6352", "rfc6578", "rfc6764", "rfc2426"},
-	"caldav":  {"rfc4918", "rfc4791", "rfc6578", "rfc6764"},
+	"webdav":  {"rfc4918", "rfc7232"},
+	"carddav": {"rfc4918", "rfc6352", "rfc6578", "rfc6764", "rfc2426", "rfc7232"},
+	"caldav":  {"rfc4918", "rfc4791", "rfc6578", "rfc6764", "rfc7232"},
 }
 
 func suiteInProtocol(suiteID, protocol string) bool {
