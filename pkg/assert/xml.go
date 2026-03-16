@@ -193,6 +193,67 @@ func extractText(inner []byte, ns, local string) (string, error) {
 	return "", fmt.Errorf("property {%s}%s not found", ns, local)
 }
 
+// ResourceTypeContains asserts that the DAV:resourcetype property in the 200
+// propstat for href contains an element with the given namespace and local name.
+// Reusable for any suite that verifies collection resource types.
+func ResourceTypeContains(ms *client.Multistatus, href, ns, local string) error {
+	ps, err := findPropStat(ms, href, "HTTP/1.1 200 OK")
+	if err != nil {
+		return fmt.Errorf("ResourceTypeContains {%s}%s: %w", ns, local, err)
+	}
+	wrapped := bytes.Join([][]byte{
+		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`),
+		ps.Prop.Inner,
+		[]byte(`</prop>`),
+	}, nil)
+	dec := xml.NewDecoder(bytes.NewReader(wrapped))
+	var (
+		depth          int
+		inResourcetype bool
+	)
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			depth++
+			if depth == 2 && t.Name.Space == "DAV:" && t.Name.Local == "resourcetype" {
+				inResourcetype = true
+			}
+			if inResourcetype && depth == 3 && t.Name.Space == ns && t.Name.Local == local {
+				return nil
+			}
+		case xml.EndElement:
+			if inResourcetype && depth == 2 {
+				inResourcetype = false
+			}
+			depth--
+		}
+	}
+	return fmt.Errorf("ResourceTypeContains: DAV:resourcetype for <%s> does not contain {%s}%s", href, ns, local)
+}
+
+// BodyContainsElement asserts that the raw XML body contains an element with
+// the given namespace and local name. Used to verify DAV:error precondition
+// elements in error responses (e.g. DAV:valid-resourcetype in 403).
+func BodyContainsElement(body []byte, ns, local string) error {
+	dec := xml.NewDecoder(bytes.NewReader(body))
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		if se, ok := tok.(xml.StartElement); ok {
+			if se.Name.Space == ns && se.Name.Local == local {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("BodyContainsElement: element {%s}%s not found in response body", ns, local)
+}
+
 // findPropStat returns the PropStat for the given href and HTTP status string,
 // e.g. "HTTP/1.1 200 OK".
 func findPropStat(ms *client.Multistatus, href, status string) (*client.PropStat, error) {

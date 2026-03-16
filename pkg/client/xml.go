@@ -206,6 +206,43 @@ func ReportSyncCollectionWithLimit(syncToken, syncLevel string, nResults int, pr
 	return []byte(b.String())
 }
 
+// propElemWithValue returns an XML element with text content for the given
+// namespace and local name. Counterpart to propElem for text content.
+// Used by MkcolExtended for additional properties in the DAV:set block.
+func propElemWithValue(ns, local, value string) string {
+	switch ns {
+	case NSdav:
+		return fmt.Sprintf("<D:%s>%s</D:%s>", local, xmlEscape(value), local)
+	case NScarddav:
+		return fmt.Sprintf("<C:%s>%s</C:%s>", local, xmlEscape(value), local)
+	default:
+		return fmt.Sprintf("<ns0:%s xmlns:ns0=%q>%s</ns0:%s>", local, ns, xmlEscape(value), local)
+	}
+}
+
+// MkcolExtended builds a DAV:mkcol request body for an extended MKCOL request
+// (RFC 5689 §3). resourceTypes is a list of [namespace, local] pairs to include
+// in DAV:resourcetype — DAV:collection should always be first. setProps is an
+// optional list of [namespace, local, value] triples for additional properties
+// to include in the DAV:set block alongside the resource type.
+func MkcolExtended(resourceTypes [][2]string, setProps [][3]string) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<D:mkcol xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	b.WriteString(`<D:set><D:prop>`)
+	b.WriteString(`<D:resourcetype>`)
+	for _, rt := range resourceTypes {
+		b.WriteString(propElem(rt[0], rt[1]))
+	}
+	b.WriteString(`</D:resourcetype>`)
+	for _, p := range setProps {
+		b.WriteString(propElemWithValue(p[0], p[1], p[2]))
+	}
+	b.WriteString(`</D:prop></D:set>`)
+	b.WriteString(`</D:mkcol>`)
+	return []byte(b.String())
+}
+
 // PropfindAllprop returns a PROPFIND body requesting all live properties.
 func PropfindAllprop() []byte {
 	return []byte(xml.Header +

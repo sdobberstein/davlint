@@ -126,6 +126,13 @@ func (c *Client) Mkcol(ctx context.Context, path string, body []byte) (*Response
 	return c.do(ctx, "MKCOL", path, h, body)
 }
 
+// MkcolRaw sends a MKCOL request with an explicit Content-Type header.
+// Use this to test server behaviour when Content-Type is incorrect (RFC 5689 §3 R-01).
+func (c *Client) MkcolRaw(ctx context.Context, path, contentType string, body []byte) (*Response, error) {
+	h := http.Header{"Content-Type": {contentType}}
+	return c.do(ctx, "MKCOL", path, h, body)
+}
+
 // Copy sends a COPY request.
 func (c *Client) Copy(ctx context.Context, src, dst string, overwrite bool) (*Response, error) {
 	ow := "F"
