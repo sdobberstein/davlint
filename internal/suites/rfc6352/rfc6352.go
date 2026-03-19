@@ -1,8 +1,12 @@
 // Package rfc6352 registers CardDAV conformance tests (RFC 6352).
 //
-// Tests cover the REPORT method with the two required report types:
-// addressbook-query (§8.6) and addressbook-multiget (§8.7), as well as the
-// supported-report-set property (§9.1) that advertises them.
+// Tests cover: address object resource handling (PUT/GET/DELETE, vCard 3.0
+// acceptance and storage, content negotiation), address book collection
+// properties (addressbook-description, supported-address-data,
+// max-resource-size, supported-collation-set), PUT/COPY/MOVE preconditions,
+// the addressbook-query and addressbook-multiget REPORT types including
+// prop selection, prop-filter, collation, and group prefix matching, DAV
+// compliance advertisement, and authentication enforcement.
 //
 // All resource URLs are discovered dynamically via the standard RFC 6764 →
 // RFC 6352 discovery chain. No server-specific paths are assumed.

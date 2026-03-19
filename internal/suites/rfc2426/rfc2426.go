@@ -1,8 +1,9 @@
-// Package rfc2426 registers vCard 3.0 conformance tests (RFC 2426).
+// Package rfc2426 registers vCard 3.0 format validation tests (RFC 2426).
 //
-// Tests verify that the server accepts vCard 3.0 input, stores it internally
-// as vCard 4.0, and can serve it back in 3.0 format on request — including
-// correct EMAIL type conversion between the two versions.
+// Tests verify server-side enforcement of vCard 3.0 format rules observable
+// via HTTP: rejection of malformed vCards (missing required properties, invalid
+// VERSION), and correct parsing of format features (line folding, escaped
+// characters).
 package rfc2426
 
 import (
