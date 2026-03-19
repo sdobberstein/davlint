@@ -149,6 +149,29 @@ func ReportAddressbookQueryParamFilter(propName, paramName, paramMatch string) [
 	))
 }
 
+// ReportAddressbookQueryAddressDataProps returns an addressbook-query REPORT body
+// that requests DAV:getetag and a CARDDAV:address-data element containing only
+// the listed vCard property names (RFC 6352 §10.4.2). vcardProps is a list of
+// vCard property names (e.g. "EMAIL", "ITEM1.EMAIL", "FN"). Pass an empty slice
+// to return the full vCard. filter follows the same convention as ReportAddressbookQuery.
+func ReportAddressbookQueryAddressDataProps(vcardProps []string, filter []byte) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<C:addressbook-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	b.WriteString(`<D:prop><D:getetag/><C:address-data>`)
+	for _, p := range vcardProps {
+		fmt.Fprintf(&b, `<C:prop name=%q/>`, p)
+	}
+	b.WriteString(`</C:address-data></D:prop>`)
+	if len(filter) > 0 {
+		b.WriteString(`<C:filter>`)
+		_, _ = b.Write(filter) //nolint:errcheck // strings.Builder.Write never fails
+		b.WriteString(`</C:filter>`)
+	}
+	b.WriteString(`</C:addressbook-query>`)
+	return []byte(b.String())
+}
+
 // ReportAddressbookMultiget returns a CardDAV addressbook-multiget REPORT body (RFC 6352 §8.7).
 // props is the list of [namespace, localname] pairs to request per resource;
 // hrefs is the list of absolute-path resource URLs to retrieve.
@@ -240,6 +263,22 @@ func MkcolExtended(resourceTypes [][2]string, setProps [][3]string) []byte {
 	}
 	b.WriteString(`</D:prop></D:set>`)
 	b.WriteString(`</D:mkcol>`)
+	return []byte(b.String())
+}
+
+// ProppatchSet returns a PROPPATCH request body that sets the named properties.
+// props is a list of [namespace, localname, value] triples. An empty value
+// is sufficient for protected-property tests where any write attempt must fail.
+func ProppatchSet(props [][3]string) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	b.WriteString(`<D:set><D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElemWithValue(p[0], p[1], p[2]))
+	}
+	b.WriteString(`</D:prop></D:set>`)
+	b.WriteString(`</D:propertyupdate>`)
 	return []byte(b.String())
 }
 

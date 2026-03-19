@@ -45,6 +45,29 @@ const AliceV4NoUID = "BEGIN:VCARD\r\n" +
 	"EMAIL;TYPE=work:alice@example.com\r\n" +
 	"END:VCARD\r\n"
 
+// GroupedEmailOnlyV4 is a vCard 4.0 whose only email address is grouped
+// (ITEM1.EMAIL), with no plain EMAIL property. Used to test group-prefix
+// matching semantics in addressbook-query (RFC 6352 §10.4.2, §10.5.1).
+const GroupedEmailOnlyV4 = "BEGIN:VCARD\r\n" +
+	"VERSION:4.0\r\n" +
+	"UID:urn:uuid:gggggggg-0000-0000-0000-000000000001\r\n" +
+	"FN:Grouped Test\r\n" +
+	"N:Test;Grouped;;;\r\n" +
+	"ITEM1.EMAIL:grouped@example.com\r\n" +
+	"END:VCARD\r\n"
+
+// BothEmailsV4 is a vCard 4.0 with both a plain EMAIL and a grouped
+// ITEM1.EMAIL property. Used to verify that a C:prop name without a group
+// prefix returns all matching instances (RFC 6352 §10.4.2 R-107).
+const BothEmailsV4 = "BEGIN:VCARD\r\n" +
+	"VERSION:4.0\r\n" +
+	"UID:urn:uuid:hhhhhhhh-0000-0000-0000-000000000001\r\n" +
+	"FN:Both Emails Test\r\n" +
+	"N:Test;Both;;;\r\n" +
+	"EMAIL:plain@example.com\r\n" +
+	"ITEM1.EMAIL:grouped@example.com\r\n" +
+	"END:VCARD\r\n"
+
 // LargePhotoV4 returns a vCard 4.0 with an inline PHOTO that exceeds 250 KB decoded.
 // The base64 data is ~342 KB of repeated 'A', which decodes to ~256 KB.
 func LargePhotoV4() string {

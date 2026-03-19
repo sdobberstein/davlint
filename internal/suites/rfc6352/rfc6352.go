@@ -100,7 +100,7 @@ func init() {
 		Fn:          testSupportedCollationSet,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc6352.unauthenticated-access-denied",
+		ID:          "rfc6352.unauthenticated-propfind-denied",
 		Suite:       "rfc6352",
 		Description: "Unauthenticated PROPFIND on an address book collection is rejected with 401 or 403",
 		Severity:    suite.Must,
@@ -196,6 +196,197 @@ func init() {
 		Description: "addressbook-query referencing an unsupported filter property is rejected with CARDDAV:supported-filter precondition",
 		Severity:    suite.Must,
 		Fn:          testSupportedFilterPrecondition,
+	})
+	// §3 R-02
+	suite.Register(suite.Test{
+		ID:          "rfc6352.dav-class-3",
+		Suite:       "rfc6352",
+		Description: `OPTIONS on an address book collection includes "3" in the DAV response header (WebDAV Class 3)`,
+		Severity:    suite.Must,
+		Fn:          testDavClass3,
+	})
+	// §5.1 R-12
+	suite.Register(suite.Test{
+		ID:          "rfc6352.put-missing-uid",
+		Suite:       "rfc6352",
+		Description: "PUT an address object without a UID property is rejected with CARDDAV:valid-address-data precondition",
+		Severity:    suite.Must,
+		Fn:          testPutMissingUID,
+	})
+	// §6.3.2.1 R-42
+	suite.Register(suite.Test{
+		ID:          "rfc6352.put-uid-change",
+		Suite:       "rfc6352",
+		Description: "PUT to an existing address object URI with a different UID value is rejected with CARDDAV:no-uid-conflict precondition",
+		Severity:    suite.Must,
+		Fn:          testPutUIDChange,
+	})
+	// §6.3.2.1 R-43 (SHOULD)
+	suite.Register(suite.Test{
+		ID:          "rfc6352.uid-conflict-href",
+		Suite:       "rfc6352",
+		Description: "CARDDAV:no-uid-conflict precondition error body includes a DAV:href identifying the conflicting resource",
+		Severity:    suite.Should,
+		Fn:          testUIDConflictHref,
+	})
+	// §6.3.2.1 R-44
+	suite.Register(suite.Test{
+		ID:          "rfc6352.copy-location-ok",
+		Suite:       "rfc6352",
+		Description: "COPY of an address book collection to a location inside another address book collection is rejected with CARDDAV:addressbook-collection-location-ok",
+		Severity:    suite.Must,
+		Fn:          testCopyLocationOK,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.move-location-ok",
+		Suite:       "rfc6352",
+		Description: "MOVE of an address book collection to a location inside another address book collection is rejected with CARDDAV:addressbook-collection-location-ok",
+		Severity:    suite.Must,
+		Fn:          testMoveLocationOK,
+	})
+	// §6.2.1 R-20, R-22 (SHOULD)
+	suite.Register(suite.Test{
+		ID:          "rfc6352.addressbook-description-writable",
+		Suite:       "rfc6352",
+		Description: "PROPPATCH can set CARDDAV:addressbook-description on an address book collection (property SHOULD NOT be protected)",
+		Severity:    suite.Should,
+		Fn:          testAddressbookDescriptionWritable,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.addressbook-description-not-in-allprop",
+		Suite:       "rfc6352",
+		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:addressbook-description",
+		Severity:    suite.Should,
+		Fn:          testAddressbookDescriptionNotInAllprop,
+	})
+	// §6.2.2 R-23, R-27
+	suite.Register(suite.Test{
+		ID:          "rfc6352.supported-address-data-protected",
+		Suite:       "rfc6352",
+		Description: "PROPPATCH attempting to set CARDDAV:supported-address-data is rejected with 403 (property is protected)",
+		Severity:    suite.Must,
+		Fn:          testSupportedAddressDataProtected,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.supported-address-data-not-in-allprop",
+		Suite:       "rfc6352",
+		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:supported-address-data",
+		Severity:    suite.Should,
+		Fn:          testSupportedAddressDataNotInAllprop,
+	})
+	// §6.2.3 R-28, R-31
+	suite.Register(suite.Test{
+		ID:          "rfc6352.max-resource-size-protected",
+		Suite:       "rfc6352",
+		Description: "PROPPATCH attempting to set CARDDAV:max-resource-size is rejected with 403 (property is protected)",
+		Severity:    suite.Must,
+		Fn:          testMaxResourceSizeProtected,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.max-resource-size-not-in-allprop",
+		Suite:       "rfc6352",
+		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:max-resource-size",
+		Severity:    suite.Should,
+		Fn:          testMaxResourceSizeNotInAllprop,
+	})
+	// §8.3 R-71, §10.5.4 R-112 (SHOULD)
+	suite.Register(suite.Test{
+		ID:          "rfc6352.query-default-collation",
+		Suite:       "rfc6352",
+		Description: "addressbook-query text-match without a collation attribute uses i;unicode-casemap (case-insensitive) by default",
+		Severity:    suite.Should,
+		Fn:          testQueryDefaultCollation,
+	})
+	// §8.3 R-72
+	suite.Register(suite.Test{
+		ID:          "rfc6352.query-wildcard-collation",
+		Suite:       "rfc6352",
+		Description: "addressbook-query with a wildcard collation identifier is rejected with CARDDAV:supported-collation precondition",
+		Severity:    suite.Must,
+		Fn:          testQueryWildcardCollation,
+	})
+	// §8.3.1 R-74, R-76
+	suite.Register(suite.Test{
+		ID:          "rfc6352.supported-collation-set-protected",
+		Suite:       "rfc6352",
+		Description: "PROPPATCH attempting to set CARDDAV:supported-collation-set is rejected with 403 (property is protected)",
+		Severity:    suite.Must,
+		Fn:          testSupportedCollationSetProtected,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.supported-collation-set-not-in-allprop",
+		Suite:       "rfc6352",
+		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:supported-collation-set",
+		Severity:    suite.Should,
+		Fn:          testSupportedCollationSetNotInAllprop,
+	})
+	// §8.6 R-85
+	suite.Register(suite.Test{
+		ID:          "rfc6352.query-nonexistent-prop",
+		Suite:       "rfc6352",
+		Description: "addressbook-query requesting a non-existent WebDAV property returns 404 in DAV:propstat for that property",
+		Severity:    suite.Must,
+		Fn:          testQueryNonexistentProp,
+	})
+	// §6.1 R-18 (resource-level)
+	suite.Register(suite.Test{
+		ID:          "rfc6352.options-addressbook-token-resource",
+		Suite:       "rfc6352",
+		Description: `OPTIONS on an address object resource also returns "addressbook" in the DAV response header`,
+		Severity:    suite.Must,
+		Fn:          testOptionsAddressbookTokenResource,
+	})
+	// §10.4.2 R-107, R-108 — C:prop name matching in address-data retrieval
+	suite.Register(suite.Test{
+		ID:          "rfc6352.address-data-prop-no-group-prefix",
+		Suite:       "rfc6352",
+		Description: "addressbook-query C:address-data C:prop without group prefix returns properties with any or no group prefix",
+		Severity:    suite.Must,
+		Fn:          testAddressDataPropNoGroupPrefix,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.address-data-prop-group-prefix",
+		Suite:       "rfc6352",
+		Description: "addressbook-query C:address-data C:prop with group prefix returns only properties with exactly that prefix",
+		Severity:    suite.Must,
+		Fn:          testAddressDataPropGroupPrefix,
+	})
+	// §10.5.1 R-109, R-110 — prop-filter name matching
+	suite.Register(suite.Test{
+		ID:          "rfc6352.query-no-group-prefix-filter",
+		Suite:       "rfc6352",
+		Description: "addressbook-query prop-filter without group prefix matches cards with grouped or ungrouped instances of that property",
+		Severity:    suite.Must,
+		Fn:          testQueryNoGroupPrefixFilter,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.query-group-prefix-filter",
+		Suite:       "rfc6352",
+		Description: "addressbook-query prop-filter with group prefix matches only cards with that exact group-prefix property",
+		Severity:    suite.Must,
+		Fn:          testQueryGroupPrefixFilter,
+	})
+	// §13 R-120
+	suite.Register(suite.Test{
+		ID:          "rfc6352.unauthenticated-get-denied",
+		Suite:       "rfc6352",
+		Description: "Unauthenticated GET on an address object resource is rejected with 401 or 403",
+		Severity:    suite.Must,
+		Fn:          testUnauthenticatedGetDenied,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.unauthenticated-put-denied",
+		Suite:       "rfc6352",
+		Description: "Unauthenticated PUT to an address book collection is rejected with 401 or 403",
+		Severity:    suite.Must,
+		Fn:          testUnauthenticatedPutDenied,
+	})
+	suite.Register(suite.Test{
+		ID:          "rfc6352.unauthenticated-report-denied",
+		Suite:       "rfc6352",
+		Description: "Unauthenticated addressbook-query REPORT on an address book collection is rejected with 401 or 403",
+		Severity:    suite.Must,
+		Fn:          testUnauthenticatedReportDenied,
 	})
 }
 
@@ -1097,6 +1288,934 @@ func testQueryParamFilter(ctx context.Context, sess *suite.Session) error {
 		return fmt.Errorf("work.vcf not returned by param-filter: %w", err)
 	}
 	return assert.NoResponseFor(ms, homeURL)
+}
+
+// testAddressDataPropNoGroupPrefix verifies RFC 6352 §10.4.2 R-107: when a
+// C:prop name attribute has no group prefix, it MUST match vCard properties
+// with no group prefix AND with any group prefix. A C:prop name="EMAIL" request
+// must return both plain EMAIL and ITEM1.EMAIL lines from the stored vCard.
+func testAddressDataPropNoGroupPrefix(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "both.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.BothEmailsV4)); err != nil {
+		return err
+	}
+
+	// Request only the EMAIL vCard property by name (no group prefix).
+	// RFC 6352 §10.4.2: must match plain EMAIL AND ITEM1.EMAIL.
+	body := client.ReportAddressbookQueryAddressDataProps([]string{"EMAIL"}, nil)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	// Both plain EMAIL and ITEM1.EMAIL must appear in the returned address-data.
+	if err := assert.PropTextContains(ms, contactURL, client.NScarddav, "address-data", "EMAIL:plain@example.com"); err != nil {
+		return fmt.Errorf("c:prop name=\"EMAIL\" (no group prefix) missing plain EMAIL: %w (RFC 6352 §10.4.2 R-107)", err)
+	}
+	if err := assert.PropTextContains(ms, contactURL, client.NScarddav, "address-data", "ITEM1.EMAIL"); err != nil {
+		return fmt.Errorf("c:prop name=\"EMAIL\" (no group prefix) missing grouped ITEM1.EMAIL: %w (RFC 6352 §10.4.2 R-107)", err)
+	}
+	return nil
+}
+
+// testAddressDataPropGroupPrefix verifies RFC 6352 §10.4.2 R-108: when a
+// C:prop name attribute includes a group prefix, it MUST match only properties
+// with exactly that group prefix and name. A C:prop name="ITEM1.EMAIL" request
+// must return ITEM1.EMAIL but NOT plain EMAIL.
+func testAddressDataPropGroupPrefix(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "both.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.BothEmailsV4)); err != nil {
+		return err
+	}
+
+	// Request only the ITEM1.EMAIL vCard property by name (exact group prefix).
+	// RFC 6352 §10.4.2: must match ITEM1.EMAIL only, NOT plain EMAIL.
+	body := client.ReportAddressbookQueryAddressDataProps([]string{"ITEM1.EMAIL"}, nil)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	addrData, err := extractAddressData(ms, contactURL)
+	if err != nil {
+		return err
+	}
+	// ITEM1.EMAIL must be present.
+	if !strings.Contains(addrData, "ITEM1.EMAIL") {
+		return fmt.Errorf("c:prop name=\"ITEM1.EMAIL\" (group prefix): grouped ITEM1.EMAIL absent from address-data (RFC 6352 §10.4.2 R-108)")
+	}
+	// Plain EMAIL must NOT be present (different group prefix — no prefix vs ITEM1).
+	for _, line := range strings.Split(addrData, "\n") {
+		line = strings.TrimRight(line, "\r")
+		upper := strings.ToUpper(line)
+		if (strings.HasPrefix(upper, "EMAIL:") || strings.HasPrefix(upper, "EMAIL;")) &&
+			!strings.HasPrefix(upper, "ITEM1.EMAIL") {
+			return fmt.Errorf("c:prop name=\"ITEM1.EMAIL\" (group prefix): plain EMAIL returned in address-data; MUST NOT match (RFC 6352 §10.4.2 R-108)")
+		}
+	}
+	return nil
+}
+
+// extractAddressData returns the text content of the CARDDAV:address-data
+// property for the given href from a multistatus response.
+func extractAddressData(ms *client.Multistatus, href string) (string, error) {
+	for i := range ms.Responses {
+		r := &ms.Responses[i]
+		if r.Href != href {
+			continue
+		}
+		for j := range r.PropStat {
+			ps := &r.PropStat[j]
+			if !strings.Contains(ps.Status, "200") {
+				continue
+			}
+			if client.PropInnerXML(ps.Prop.Inner, client.NScarddav, "address-data") {
+				// Re-parse to get the text content.
+				wrapped := append(
+					[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`),
+					ps.Prop.Inner...,
+				)
+				wrapped = append(wrapped, []byte("</prop>")...)
+				// Use PropTextContains-style extraction via a throwaway Multistatus.
+				return string(wrapped), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("address-data not found for href %q", href)
+}
+
+// testQueryNoGroupPrefixFilter verifies RFC 6352 §10.5.1 R-109: a C:prop-filter
+// name without a group prefix MUST match address objects that have the named
+// property with any group prefix (or none). Filtering on "EMAIL" must return
+// cards with plain EMAIL as well as cards with only ITEM1.EMAIL.
+func testQueryNoGroupPrefixFilter(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	// grouped.vcf has only ITEM1.EMAIL; alice.vcf has only plain EMAIL.
+	groupedURL := colURL + "grouped.vcf"
+	aliceURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, groupedURL, []byte(fixtures.GroupedEmailOnlyV4)); err != nil {
+		return err
+	}
+	if _, err := putContact(ctx, c, aliceURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// Filter on EMAIL (no group prefix) — must match both cards.
+	filter := client.ReportAddressbookQueryPropFilter("EMAIL", "@example.com")
+	body := client.ReportAddressbookQuery([][2]string{{client.NSdav, "getetag"}}, filter)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	// Plain EMAIL card must match.
+	if err := assert.PropExists(ms, aliceURL, client.NSdav, "getetag"); err != nil {
+		return fmt.Errorf("prop-filter name=\"EMAIL\" (no group prefix) did not match card with plain EMAIL: %w (RFC 6352 §10.5.1 R-109)", err)
+	}
+	// Grouped ITEM1.EMAIL card must also match.
+	if err := assert.PropExists(ms, groupedURL, client.NSdav, "getetag"); err != nil {
+		return fmt.Errorf("prop-filter name=\"EMAIL\" (no group prefix) did not match card with ITEM1.EMAIL: %w (RFC 6352 §10.5.1 R-109)", err)
+	}
+	return nil
+}
+
+// testQueryGroupPrefixFilter verifies RFC 6352 §10.5.1 R-110: a C:prop-filter
+// name with a group prefix MUST match only address objects that have the named
+// property with exactly that group prefix. Filtering on "ITEM1.EMAIL" must NOT
+// return cards that have only plain EMAIL.
+func testQueryGroupPrefixFilter(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	// grouped.vcf has only ITEM1.EMAIL; alice.vcf has only plain EMAIL.
+	groupedURL := colURL + "grouped.vcf"
+	aliceURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, groupedURL, []byte(fixtures.GroupedEmailOnlyV4)); err != nil {
+		return err
+	}
+	if _, err := putContact(ctx, c, aliceURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// Filter on ITEM1.EMAIL (exact group prefix) — must match only grouped.vcf.
+	filter := client.ReportAddressbookQueryPropFilter("ITEM1.EMAIL", "@example.com")
+	body := client.ReportAddressbookQuery([][2]string{{client.NSdav, "getetag"}}, filter)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	// Grouped ITEM1.EMAIL card must match.
+	if err := assert.PropExists(ms, groupedURL, client.NSdav, "getetag"); err != nil {
+		return fmt.Errorf("prop-filter name=\"ITEM1.EMAIL\" (group prefix) did not match card with ITEM1.EMAIL: %w (RFC 6352 §10.5.1 R-110)", err)
+	}
+	// Plain EMAIL card must NOT match.
+	if err := assert.NoResponseFor(ms, aliceURL); err != nil {
+		return fmt.Errorf("prop-filter name=\"ITEM1.EMAIL\" (group prefix) incorrectly matched card with only plain EMAIL (RFC 6352 §10.5.1 R-110): %w", err)
+	}
+	return nil
+}
+
+// testDavClass3 verifies RFC 6352 §3 R-02: a CardDAV server MUST support
+// WebDAV Class 3, advertised by including "3" in the DAV response header.
+func testDavClass3(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Options(ctx, colURL)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// RFC 6352 §3: server MUST support WebDAV Class 3; DAV header MUST include "3".
+	return assert.HeaderContains(resp, "DAV", "3")
+}
+
+// testPutMissingUID verifies RFC 6352 §5.1 R-12: vCard components in an address
+// book collection MUST have a UID property value; a PUT without UID MUST be rejected.
+func testPutMissingUID(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"nouid.vcf", "text/vcard; charset=utf-8", []byte(fixtures.AliceV4NoUID))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 201 || resp.StatusCode == 204 {
+		return fmt.Errorf("PUT vCard without UID was accepted (got %d); server MUST reject (RFC 6352 §5.1)", resp.StatusCode)
+	}
+	if !strings.Contains(string(resp.Body), "valid-address-data") {
+		return fmt.Errorf("PUT vCard without UID: got %d but response body missing CARDDAV:valid-address-data precondition (RFC 6352 §5.1)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testPutUIDChange verifies RFC 6352 §6.3.2.1 R-42: a PUT to an existing
+// address object URI MUST NOT overwrite it with a resource having a different UID.
+func testPutUIDChange(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	// PUT Alice at alice.vcf — must succeed (UID = alice's UID).
+	if _, err := putContact(ctx, c, colURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// PUT Bob's vCard at the same URL — different UID, must be rejected.
+	resp, err := c.Put(ctx, colURL+"alice.vcf", "text/vcard; charset=utf-8", []byte(fixtures.BobV4))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 201 || resp.StatusCode == 204 {
+		return fmt.Errorf("PUT to existing resource with different UID was accepted (got %d); server MUST reject with CARDDAV:no-uid-conflict (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	if !strings.Contains(string(resp.Body), "no-uid-conflict") {
+		return fmt.Errorf("PUT with changed UID: got %d but response body missing CARDDAV:no-uid-conflict precondition (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testUIDConflictHref verifies RFC 6352 §6.3.2.1 R-43: when rejecting a PUT due
+// to a UID conflict, servers SHOULD include a DAV:href identifying the conflicting
+// resource in the CARDDAV:no-uid-conflict error element.
+func testUIDConflictHref(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := putContact(ctx, c, colURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// PUT same UID at a different path — must fail with no-uid-conflict.
+	resp, err := c.Put(ctx, colURL+"alice-copy.vcf", "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 201 || resp.StatusCode == 204 {
+		return fmt.Errorf("PUT with duplicate UID was accepted (got %d); CARDDAV:no-uid-conflict test is not meaningful (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	// RFC 6352 §6.3.2.1: SHOULD include DAV:href pointing to the conflicting resource.
+	if !strings.Contains(string(resp.Body), "href") {
+		return fmt.Errorf("CARDDAV:no-uid-conflict error body missing DAV:href for conflicting resource (RFC 6352 §6.3.2.1 SHOULD)")
+	}
+	return nil
+}
+
+// testCopyLocationOK verifies RFC 6352 §6.3.2.1 R-44: COPYing an address book
+// collection to a location inside another address book collection MUST be rejected
+// with the CARDDAV:addressbook-collection-location-ok precondition.
+func testCopyLocationOK(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	srcURL, cleanupSrc, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupSrc)
+
+	dstURL, cleanupDst, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupDst)
+
+	// Copy src address book into dst address book — nested address book MUST be rejected.
+	nestedURL := dstURL + "nested/"
+	resp, err := c.Copy(ctx, srcURL, nestedURL, false)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 201 || resp.StatusCode == 204 {
+		sess.AddCleanup(func(ctx context.Context) { _, _ = c.Delete(ctx, nestedURL, "") }) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("COPY of address book into another address book was accepted (got %d); server MUST reject with CARDDAV:addressbook-collection-location-ok (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	if !strings.Contains(string(resp.Body), "addressbook-collection-location-ok") {
+		return fmt.Errorf("COPY to invalid location: got %d but response body missing CARDDAV:addressbook-collection-location-ok precondition (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testMoveLocationOK verifies RFC 6352 §6.3.2.1 R-44: MOVEing an address book
+// collection to a location inside another address book collection MUST be rejected
+// with the CARDDAV:addressbook-collection-location-ok precondition.
+func testMoveLocationOK(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	srcURL, cleanupSrc, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupSrc)
+
+	dstURL, cleanupDst, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupDst)
+
+	// Move src address book into dst address book — nested address book MUST be rejected.
+	nestedURL := dstURL + "nested/"
+	resp, err := c.Move(ctx, srcURL, nestedURL, false)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 201 || resp.StatusCode == 204 {
+		sess.AddCleanup(func(ctx context.Context) { _, _ = c.Delete(ctx, nestedURL, "") }) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("MOVE of address book into another address book was accepted (got %d); server MUST reject with CARDDAV:addressbook-collection-location-ok (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	if !strings.Contains(string(resp.Body), "addressbook-collection-location-ok") {
+		return fmt.Errorf("MOVE to invalid location: got %d but response body missing CARDDAV:addressbook-collection-location-ok precondition (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testAddressbookDescriptionWritable verifies RFC 6352 §6.2.1 R-20: the
+// CARDDAV:addressbook-description property SHOULD NOT be protected; users
+// should be able to set it via PROPPATCH.
+func testAddressbookDescriptionWritable(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.ProppatchSet([][3]string{
+		{client.NScarddav, "addressbook-description", "davlint test description"},
+	})
+	resp, err := c.Proppatch(ctx, colURL, body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 207 {
+		return fmt.Errorf("PROPPATCH to set addressbook-description: got %d, want 207 (RFC 6352 §6.2.1 SHOULD NOT be protected)", resp.StatusCode)
+	}
+	// 207 with a 403 propstat means the property is protected — a SHOULD NOT violation.
+	if strings.Contains(string(resp.Body), "403") {
+		return fmt.Errorf("PROPPATCH to set addressbook-description: server returned 403 in propstat; property SHOULD NOT be protected (RFC 6352 §6.2.1)")
+	}
+	return nil
+}
+
+// testAddressbookDescriptionNotInAllprop verifies RFC 6352 §6.2.1 R-22:
+// CARDDAV:addressbook-description SHOULD NOT be returned by PROPFIND allprop.
+func testAddressbookDescriptionNotInAllprop(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.PropfindAllprop()
+	resp, err := c.Propfind(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	// RFC 6352 §6.2.1: allprop SHOULD NOT return addressbook-description.
+	if strings.Contains(string(resp.Body), "addressbook-description") {
+		return fmt.Errorf("PROPFIND DAV:allprop returned CARDDAV:addressbook-description, which SHOULD NOT be included (RFC 6352 §6.2.1)")
+	}
+	return nil
+}
+
+// testSupportedAddressDataProtected verifies RFC 6352 §6.2.2 R-23:
+// CARDDAV:supported-address-data MUST be a protected property; any PROPPATCH
+// attempt to set it MUST be rejected with a 403 status.
+func testSupportedAddressDataProtected(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.ProppatchSet([][3]string{
+		{client.NScarddav, "supported-address-data", ""},
+	})
+	resp, err := c.Proppatch(ctx, colURL, body)
+	if err != nil {
+		return err
+	}
+	// RFC 6352 §6.2.2: MUST be protected — server must return 403 (directly or in propstat).
+	if resp.StatusCode == 403 {
+		return nil
+	}
+	if resp.StatusCode == 207 && strings.Contains(string(resp.Body), "403") {
+		return nil
+	}
+	return fmt.Errorf("PROPPATCH on CARDDAV:supported-address-data: got %d without 403; property MUST be protected (RFC 6352 §6.2.2)", resp.StatusCode)
+}
+
+// testSupportedAddressDataNotInAllprop verifies RFC 6352 §6.2.2 R-27:
+// CARDDAV:supported-address-data SHOULD NOT be returned by PROPFIND allprop.
+func testSupportedAddressDataNotInAllprop(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.PropfindAllprop()
+	resp, err := c.Propfind(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	// RFC 6352 §6.2.2: allprop SHOULD NOT return supported-address-data.
+	if strings.Contains(string(resp.Body), "supported-address-data") {
+		return fmt.Errorf("PROPFIND DAV:allprop returned CARDDAV:supported-address-data, which SHOULD NOT be included (RFC 6352 §6.2.2)")
+	}
+	return nil
+}
+
+// testMaxResourceSizeProtected verifies RFC 6352 §6.2.3 R-28:
+// CARDDAV:max-resource-size MUST be a protected property; any PROPPATCH attempt
+// to set it MUST be rejected. If the server does not implement the property the
+// test passes trivially (the property would not exist to protect).
+func testMaxResourceSizeProtected(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	// First check whether the server exposes this property at all.
+	pfBody := client.PropfindProps([][2]string{{client.NScarddav, "max-resource-size"}})
+	pfResp, err := c.Propfind(ctx, colURL, "0", pfBody)
+	if err != nil {
+		return err
+	}
+	pfMS, err := client.ParseMultistatus(pfResp.Body)
+	if err != nil {
+		return err
+	}
+	// If the server does not support max-resource-size, skip the protection test.
+	if err := assert.PropExists(pfMS, colURL, client.NScarddav, "max-resource-size"); err != nil {
+		return nil // property absent — not applicable
+	}
+
+	body := client.ProppatchSet([][3]string{
+		{client.NScarddav, "max-resource-size", "999999999"},
+	})
+	resp, err := c.Proppatch(ctx, colURL, body)
+	if err != nil {
+		return err
+	}
+	// RFC 6352 §6.2.3: MUST be protected — server must return 403 (directly or in propstat).
+	if resp.StatusCode == 403 {
+		return nil
+	}
+	if resp.StatusCode == 207 && strings.Contains(string(resp.Body), "403") {
+		return nil
+	}
+	return fmt.Errorf("PROPPATCH on CARDDAV:max-resource-size: got %d without 403; property MUST be protected (RFC 6352 §6.2.3)", resp.StatusCode)
+}
+
+// testMaxResourceSizeNotInAllprop verifies RFC 6352 §6.2.3 R-31:
+// CARDDAV:max-resource-size SHOULD NOT be returned by PROPFIND allprop.
+func testMaxResourceSizeNotInAllprop(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.PropfindAllprop()
+	resp, err := c.Propfind(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	// RFC 6352 §6.2.3: allprop SHOULD NOT return max-resource-size.
+	if strings.Contains(string(resp.Body), "max-resource-size") {
+		return fmt.Errorf("PROPFIND DAV:allprop returned CARDDAV:max-resource-size, which SHOULD NOT be included (RFC 6352 §6.2.3)")
+	}
+	return nil
+}
+
+// testQueryDefaultCollation verifies RFC 6352 §8.3 R-71 and §10.5.4 R-112:
+// in the absence of a collation attribute on C:text-match, the server MUST use
+// i;unicode-casemap, which is case-insensitive. A filter using an uppercase
+// search string MUST still match the (mixed-case) stored FN value.
+func testQueryDefaultCollation(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	aliceURL := colURL + "alice.vcf"
+	bobURL := colURL + "bob.vcf"
+	if _, err := putContact(ctx, c, aliceURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+	if _, err := putContact(ctx, c, bobURL, []byte(fixtures.BobV4)); err != nil {
+		return err
+	}
+
+	// Filter FN contains "ALICE" (all caps) with NO collation — default must be case-insensitive.
+	filter := client.ReportAddressbookQueryPropFilter("FN", "ALICE")
+	body := client.ReportAddressbookQuery([][2]string{{client.NSdav, "getetag"}}, filter)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	// "ALICE" must match FN:"Alice Test" under i;unicode-casemap default.
+	if err := assert.PropExists(ms, aliceURL, client.NSdav, "getetag"); err != nil {
+		return fmt.Errorf("default collation (no attribute): uppercase filter did not match mixed-case FN; server may be using case-sensitive default instead of i;unicode-casemap (RFC 6352 §8.3): %w", err)
+	}
+	return assert.NoResponseFor(ms, bobURL)
+}
+
+// testQueryWildcardCollation verifies RFC 6352 §8.3 R-72: collation identifiers
+// MUST NOT contain wildcards (per RFC 4790 §3.2); a wildcard collation MUST be
+// rejected with a CARDDAV:supported-collation precondition error.
+func testQueryWildcardCollation(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := putContact(ctx, c, colURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// "i;*" is a wildcard collation identifier — MUST be rejected per RFC 4790 §3.2.
+	filter := client.ReportAddressbookQueryPropFilterCollation("FN", "Alice", "i;*")
+	body := client.ReportAddressbookQuery([][2]string{{client.NSdav, "getetag"}}, filter)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 207 {
+		return fmt.Errorf("addressbook-query with wildcard collation %q returned 207; MUST be rejected with CARDDAV:supported-collation (RFC 6352 §8.3)", "i;*")
+	}
+	if !strings.Contains(string(resp.Body), "supported-collation") {
+		return fmt.Errorf("addressbook-query with wildcard collation: got %d but response body missing CARDDAV:supported-collation precondition (RFC 6352 §8.3)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testSupportedCollationSetProtected verifies RFC 6352 §8.3.1 R-74:
+// CARDDAV:supported-collation-set MUST be a protected property; any PROPPATCH
+// attempt to set it MUST be rejected with a 403 status.
+func testSupportedCollationSetProtected(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.ProppatchSet([][3]string{
+		{client.NScarddav, "supported-collation-set", ""},
+	})
+	resp, err := c.Proppatch(ctx, colURL, body)
+	if err != nil {
+		return err
+	}
+	// RFC 6352 §8.3.1: MUST be protected — server must return 403 (directly or in propstat).
+	if resp.StatusCode == 403 {
+		return nil
+	}
+	if resp.StatusCode == 207 && strings.Contains(string(resp.Body), "403") {
+		return nil
+	}
+	return fmt.Errorf("PROPPATCH on CARDDAV:supported-collation-set: got %d without 403; property MUST be protected (RFC 6352 §8.3.1)", resp.StatusCode)
+}
+
+// testSupportedCollationSetNotInAllprop verifies RFC 6352 §8.3.1 R-76:
+// CARDDAV:supported-collation-set SHOULD NOT be returned by PROPFIND allprop.
+func testSupportedCollationSetNotInAllprop(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.PropfindAllprop()
+	resp, err := c.Propfind(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	// RFC 6352 §8.3.1: allprop SHOULD NOT return supported-collation-set.
+	if strings.Contains(string(resp.Body), "supported-collation-set") {
+		return fmt.Errorf("PROPFIND DAV:allprop returned CARDDAV:supported-collation-set, which SHOULD NOT be included (RFC 6352 §8.3.1)")
+	}
+	return nil
+}
+
+// testQueryNonexistentProp verifies RFC 6352 §8.6 R-85: when an addressbook-query
+// REPORT requests a non-existent WebDAV property, the server MUST report a 404
+// status for that property in the DAV:propstat of each matching response entry.
+func testQueryNonexistentProp(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// Request a real property (getetag) plus a non-existent one.
+	body := client.ReportAddressbookQuery(
+		[][2]string{
+			{client.NSdav, "getetag"},
+			{client.NSdav, "davlint-nonexistent-xyz"},
+		},
+		nil,
+	)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	// getetag must be present in the 200 propstat.
+	if err := assert.PropExists(ms, contactURL, client.NSdav, "getetag"); err != nil {
+		return err
+	}
+	// The non-existent property must appear in a 404 propstat (RFC 6352 §8.6 R-85).
+	return assert.PropNotFound(ms, contactURL, client.NSdav, "davlint-nonexistent-xyz")
+}
+
+// testOptionsAddressbookTokenResource verifies RFC 6352 §6.1 R-18: the
+// "addressbook" token in the DAV response header is required not just on
+// address book collections but on any resource that supports address book
+// features, including individual address object resources.
+func testOptionsAddressbookTokenResource(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	resp, err := c.Options(ctx, contactURL)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// RFC 6352 §6.1: DAV header MUST contain "addressbook" on address object resources too.
+	return assert.HeaderContains(resp, "DAV", "addressbook")
+}
+
+// testUnauthenticatedGetDenied verifies RFC 6352 §13 R-120: address book
+// resources MUST NOT be accessible by unauthenticated users; an unauthenticated
+// GET on an address object resource MUST be rejected with 401 or 403.
+func testUnauthenticatedGetDenied(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	resp, err := c.GetNoAuth(ctx, contactURL)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 401 && resp.StatusCode != 403 {
+		return fmt.Errorf("unauthenticated GET on address object: got %d, want 401 or 403 (RFC 6352 §13)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testUnauthenticatedPutDenied verifies RFC 6352 §13 R-120: unauthenticated
+// clients MUST NOT be able to write to address book resources; a PUT without
+// credentials MUST be rejected with 401 or 403.
+func testUnauthenticatedPutDenied(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.PutNoAuth(ctx, colURL+"noauth.vcf", "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 401 && resp.StatusCode != 403 {
+		return fmt.Errorf("unauthenticated PUT to address book: got %d, want 401 or 403 (RFC 6352 §13)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testUnauthenticatedReportDenied verifies RFC 6352 §13 R-120: unauthenticated
+// clients MUST NOT be able to query address book resources; an addressbook-query
+// REPORT without credentials MUST be rejected with 401 or 403.
+func testUnauthenticatedReportDenied(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := putContact(ctx, c, colURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	body := client.ReportAddressbookQuery([][2]string{{client.NSdav, "getetag"}}, nil)
+	resp, err := c.ReportNoAuth(ctx, colURL, body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 401 && resp.StatusCode != 403 {
+		return fmt.Errorf("unauthenticated addressbook-query REPORT: got %d, want 401 or 403 (RFC 6352 §13)", resp.StatusCode)
+	}
+	return nil
 }
 
 // testSupportedFilterPrecondition verifies RFC 6352 §8.5: when a server does

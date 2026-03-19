@@ -254,6 +254,28 @@ func BodyContainsElement(body []byte, ns, local string) error {
 	return fmt.Errorf("BodyContainsElement: element {%s}%s not found in response body", ns, local)
 }
 
+// PropNotFound asserts that the named property appears in a 404 propstat for the
+// given href in the multistatus. RFC 6352 §8.6 (R-85): a request for a
+// non-existent WebDAV property in a REPORT MUST be noted with 404 in DAV:propstat.
+func PropNotFound(ms *client.Multistatus, href, ns, local string) error {
+	for i := range ms.Responses {
+		r := &ms.Responses[i]
+		if r.Href != href {
+			continue
+		}
+		for j := range r.PropStat {
+			ps := &r.PropStat[j]
+			if !strings.Contains(ps.Status, "404") {
+				continue
+			}
+			if client.PropInnerXML(ps.Prop.Inner, ns, local) {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("PropNotFound: property {%s}%s not found in a 404 propstat for <%s>", ns, local, href)
+}
+
 // findPropStat returns the PropStat for the given href and HTTP status string,
 // e.g. "HTTP/1.1 200 OK".
 func findPropStat(ms *client.Multistatus, href, status string) (*client.PropStat, error) {

@@ -225,6 +225,26 @@ func (c *Client) GetConditional(ctx context.Context, path string, cond http.Head
 	return c.do(ctx, http.MethodGet, path, cond, nil)
 }
 
+// GetNoAuth sends a GET request without credentials.
+// Use this to test that the server requires authentication (RFC 6352 §13 MUST).
+func (c *Client) GetNoAuth(ctx context.Context, path string) (*Response, error) {
+	return c.doNoAuth(ctx, http.MethodGet, path, nil, nil)
+}
+
+// PutNoAuth sends a PUT request without credentials.
+// Use this to test that the server requires authentication (RFC 6352 §13 MUST).
+func (c *Client) PutNoAuth(ctx context.Context, path, contentType string, body []byte) (*Response, error) {
+	h := http.Header{"Content-Type": {contentType}}
+	return c.doNoAuth(ctx, http.MethodPut, path, h, body)
+}
+
+// ReportNoAuth sends a REPORT request without credentials.
+// Use this to test that the server requires authentication (RFC 6352 §13 MUST).
+func (c *Client) ReportNoAuth(ctx context.Context, path string, body []byte) (*Response, error) {
+	h := http.Header{"Content-Type": {"application/xml; charset=utf-8"}}
+	return c.doNoAuth(ctx, "REPORT", path, h, body)
+}
+
 // PropfindWithIf sends a PROPFIND request with an If state-token header.
 // token is wrapped as required by RFC 4918 §10.4: If: (<token>).
 // Use this to test that a server honours DAV:sync-token values as state tokens
