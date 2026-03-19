@@ -21,67 +21,97 @@ import (
 )
 
 func init() {
-	// §3.1.1 / §1: FN MUST be present.
+	// §3.1.1: FN MUST be present.
 	suite.Register(suite.Test{
-		ID:          "rfc2426.reject-missing-fn",
-		Suite:       "rfc2426",
-		Description: "PUT a vCard 3.0 without FN is rejected with 4xx (RFC 2426 §3.1.1 MUST)",
-		Severity:    suite.Must,
+		ID:            "rfc2426.reject-missing-fn",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard 3.0 without FN is rejected with 4xx (RFC 2426 §3.1.1 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testRejectMissingFN,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§3.1.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.1.1"},
+		},
+		Fn: testRejectMissingFN,
 	})
-	// §3.1.2 / §1: N MUST be present.
+	// §3.1.2: N MUST be present.
 	suite.Register(suite.Test{
-		ID:          "rfc2426.reject-missing-n",
-		Suite:       "rfc2426",
-		Description: "PUT a vCard 3.0 without N is rejected with 4xx (RFC 2426 §3.1.2 MUST)",
-		Severity:    suite.Must,
+		ID:            "rfc2426.reject-missing-n",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard 3.0 without N is rejected with 4xx (RFC 2426 §3.1.2 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testRejectMissingN,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§3.1.2", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.1.2"},
+		},
+		Fn: testRejectMissingN,
 	})
-	// §3.6.9 / §1: VERSION MUST be present.
+	// §3.6.9: VERSION MUST be present.
 	suite.Register(suite.Test{
-		ID:          "rfc2426.reject-missing-version",
-		Suite:       "rfc2426",
-		Description: "PUT a vCard without VERSION is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
-		Severity:    suite.Must,
+		ID:            "rfc2426.reject-missing-version",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard without VERSION is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testRejectMissingVersion,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§3.6.9", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.6.9"},
+		},
+		Fn: testRejectMissingVersion,
 	})
 	// §3.6.9: VERSION value MUST be "3.0" for this spec.
 	suite.Register(suite.Test{
-		ID:          "rfc2426.reject-invalid-version",
-		Suite:       "rfc2426",
-		Description: "PUT a vCard with VERSION:2.1 is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
-		Severity:    suite.Must,
+		ID:            "rfc2426.reject-invalid-version",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with VERSION:2.1 is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testRejectInvalidVersion,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§3.6.9", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.6.9"},
+		},
+		Fn: testRejectInvalidVersion,
 	})
-	// §2.6 / MIME-DIR: folded lines MUST be unfolded before parsing.
+	// §2.6 / RFC 2425 §5.8.1: folded lines MUST be unfolded before parsing.
 	suite.Register(suite.Test{
-		ID:          "rfc2426.folded-line-parsed",
-		Suite:       "rfc2426",
-		Description: "PUT a vCard with a CRLF+SPACE folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
-		Severity:    suite.Must,
+		ID:            "rfc2426.folded-line-parsed",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with a CRLF+SPACE folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testFoldedLineParsed,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2425", Section: "§5.8.1", URL: "https://www.rfc-editor.org/rfc/rfc2425#section-5.8.1"},
+			{RFC: "RFC 2426", Section: "§2.6", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.6"},
+		},
+		Fn: testFoldedLineParsed,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc2426.folded-line-tab-parsed",
-		Suite:       "rfc2426",
-		Description: "PUT a vCard with a CRLF+TAB folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
-		Severity:    suite.Must,
+		ID:            "rfc2426.folded-line-tab-parsed",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with a CRLF+TAB folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testFoldedLineTabParsed,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2425", Section: "§5.8.1", URL: "https://www.rfc-editor.org/rfc/rfc2425#section-5.8.1"},
+			{RFC: "RFC 2426", Section: "§2.6", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.6"},
+		},
+		Fn: testFoldedLineTabParsed,
 	})
 	// §2.3: SEMI-COLON in a text value MUST be backslash-escaped.
 	suite.Register(suite.Test{
-		ID:          "rfc2426.semicolon-escape-accepted",
-		Suite:       "rfc2426",
-		Description: "PUT a vCard with a backslash-escaped semicolon in FN is accepted (RFC 2426 §2.3 MUST)",
-		Severity:    suite.Must,
+		ID:            "rfc2426.semicolon-escape-accepted",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with a backslash-escaped semicolon in FN is accepted (RFC 2426 §2.3 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testSemicolonEscapeAccepted,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.3", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.3"},
+		},
+		Fn: testSemicolonEscapeAccepted,
 	})
 }
 
