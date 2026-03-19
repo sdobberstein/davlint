@@ -27,6 +27,7 @@ func init() {
 		Suite:       "rfc2426",
 		Description: "PUT a vCard 3.0 without FN is rejected with 4xx (RFC 2426 §3.1.1 MUST)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testRejectMissingFN,
 	})
 	// §3.1.2 / §1: N MUST be present.
@@ -35,6 +36,7 @@ func init() {
 		Suite:       "rfc2426",
 		Description: "PUT a vCard 3.0 without N is rejected with 4xx (RFC 2426 §3.1.2 MUST)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testRejectMissingN,
 	})
 	// §3.6.9 / §1: VERSION MUST be present.
@@ -43,6 +45,7 @@ func init() {
 		Suite:       "rfc2426",
 		Description: "PUT a vCard without VERSION is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testRejectMissingVersion,
 	})
 	// §3.6.9: VERSION value MUST be "3.0" for this spec.
@@ -51,6 +54,7 @@ func init() {
 		Suite:       "rfc2426",
 		Description: "PUT a vCard with VERSION:2.1 is rejected with 4xx (RFC 2426 §3.6.9 MUST)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testRejectInvalidVersion,
 	})
 	// §2.6 / MIME-DIR: folded lines MUST be unfolded before parsing.
@@ -59,6 +63,7 @@ func init() {
 		Suite:       "rfc2426",
 		Description: "PUT a vCard with a CRLF+SPACE folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testFoldedLineParsed,
 	})
 	suite.Register(suite.Test{
@@ -66,6 +71,7 @@ func init() {
 		Suite:       "rfc2426",
 		Description: "PUT a vCard with a CRLF+TAB folded FN line is accepted and the full value survives a round-trip (RFC 2425 §5.8.1)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testFoldedLineTabParsed,
 	})
 	// §2.3: SEMI-COLON in a text value MUST be backslash-escaped.
@@ -74,6 +80,7 @@ func init() {
 		Suite:       "rfc2426",
 		Description: "PUT a vCard with a backslash-escaped semicolon in FN is accepted (RFC 2426 §2.3 MUST)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testSemicolonEscapeAccepted,
 	})
 }

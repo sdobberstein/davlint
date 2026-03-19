@@ -27,6 +27,7 @@ func init() {
 		Description: `OPTIONS response includes "extended-mkcol" in the DAV header`,
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 5689", Section: "§3.1"}},
+		MinPrincipals: 1,
 		Fn:          testOptionsAdvertisesExtendedMkcol,
 	})
 	suite.Register(suite.Test{
@@ -35,6 +36,7 @@ func init() {
 		Description: "Extended MKCOL with DAV:collection + CARDDAV:addressbook returns 201 and collection reports both resource types",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 5689", Section: "§3"}},
+		MinPrincipals: 1,
 		Fn:          testMkcolAddressbookCreates,
 	})
 	suite.Register(suite.Test{
@@ -43,6 +45,7 @@ func init() {
 		Description: "Extended MKCOL sets DAV:displayname in the same request; PROPFIND confirms the property was stored",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 5689", Section: "§3"}},
+		MinPrincipals: 1,
 		Fn:          testMkcolWithDisplayname,
 	})
 	suite.Register(suite.Test{
@@ -51,6 +54,7 @@ func init() {
 		Description: "Extended MKCOL with a body but wrong Content-Type (text/plain) is rejected with 4xx",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 5689", Section: "§3"}},
+		MinPrincipals: 1,
 		Fn:          testMkcolBadContentType,
 	})
 	suite.Register(suite.Test{
@@ -59,6 +63,7 @@ func init() {
 		Description: "Extended MKCOL with a resource type that omits DAV:collection is rejected with 4xx",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 5689", Section: "§3"}},
+		MinPrincipals: 1,
 		Fn:          testMkcolMissingCollectionType,
 	})
 	suite.Register(suite.Test{
@@ -67,6 +72,7 @@ func init() {
 		Description: "Extended MKCOL requesting an unknown resource type returns 403 with DAV:valid-resourcetype precondition",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 5689", Section: "§3.3"}},
+		MinPrincipals: 1,
 		Fn:          testMkcolUnsupportedResourcetype,
 	})
 	suite.Register(suite.Test{
@@ -75,6 +81,7 @@ func init() {
 		Description: "Extended MKCOL that fails to set a property rolls back the entire request atomically",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 5689", Section: "§3"}},
+		MinPrincipals: 1,
 		Fn:          testMkcolPropertyFailureAtomic,
 	})
 }

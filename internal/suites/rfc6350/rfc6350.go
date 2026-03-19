@@ -23,6 +23,7 @@ func init() {
 		Suite:       "rfc6350",
 		Description: "GET on a stored vCard returns VERSION:4.0 by default",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testGetDefaultV4,
 	})
 	suite.Register(suite.Test{
@@ -30,6 +31,7 @@ func init() {
 		Suite:       "rfc6350",
 		Description: "GET with Accept: text/vcard; version=4.0 returns VERSION:4.0",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testGetAcceptV4,
 	})
 	suite.Register(suite.Test{
@@ -37,6 +39,7 @@ func init() {
 		Suite:       "rfc6350",
 		Description: "GET with Accept: text/vcard; version=3.0 returns VERSION:3.0",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testGetAcceptV3,
 	})
 	suite.Register(suite.Test{
@@ -44,6 +47,7 @@ func init() {
 		Suite:       "rfc6350",
 		Description: "PUT a vCard without UID; server assigns one and GET returns a UID line",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testUIDAssignment,
 	})
 	suite.Register(suite.Test{
@@ -51,6 +55,7 @@ func init() {
 		Suite:       "rfc6350",
 		Description: "PROPFIND on an address book returns C:supported-address-data with 3.0 and 4.0",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testSupportedAddressData,
 	})
 	suite.Register(suite.Test{
@@ -58,6 +63,7 @@ func init() {
 		Suite:       "rfc6350",
 		Description: "PUT a vCard with an inline PHOTO exceeding 250 KB returns 413",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testPhotoSizeLimit,
 	})
 }

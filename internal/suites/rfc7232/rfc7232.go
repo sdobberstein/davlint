@@ -47,6 +47,7 @@ func init() {
 		Description: "GET on a vCard resource returns an ETag header without the W/ weak prefix",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§2.1"}, {RFC: "RFC 6352", Section: "§5.3.4"}},
+		MinPrincipals: 1,
 		Fn:          testETagIsStrong,
 	})
 	suite.Register(suite.Test{
@@ -55,6 +56,7 @@ func init() {
 		Description: "GET on a vCard resource returns a Last-Modified header",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§2.2.1"}},
+		MinPrincipals: 1,
 		Fn:          testLastModifiedPresent,
 	})
 	suite.Register(suite.Test{
@@ -63,6 +65,7 @@ func init() {
 		Description: "PUT of a vCard returns an ETag in the response",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§2.4"}},
+		MinPrincipals: 1,
 		Fn:          testETagOnPutResponse,
 	})
 	suite.Register(suite.Test{
@@ -71,6 +74,7 @@ func init() {
 		Description: "ETag on a resource changes after a successful PUT update",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§2.3.1"}},
+		MinPrincipals: 1,
 		Fn:          testETagChangesAfterPut,
 	})
 	suite.Register(suite.Test{
@@ -79,6 +83,7 @@ func init() {
 		Description: "PUT with If-Match: <current-etag> returns 2xx and updates the resource",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.1"}},
+		MinPrincipals: 1,
 		Fn:          testIfMatchMatchingETagSucceeds,
 	})
 	suite.Register(suite.Test{
@@ -87,6 +92,7 @@ func init() {
 		Description: "PUT with If-Match: <stale-etag> returns 412 Precondition Failed",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.1"}},
+		MinPrincipals: 1,
 		Fn:          testIfMatchStaleETag412,
 	})
 	suite.Register(suite.Test{
@@ -95,6 +101,7 @@ func init() {
 		Description: "PUT with If-Match: * on an existing resource returns 2xx",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.1"}},
+		MinPrincipals: 1,
 		Fn:          testIfMatchWildcardExistingSucceeds,
 	})
 	suite.Register(suite.Test{
@@ -103,6 +110,7 @@ func init() {
 		Description: "PUT with If-Match: * on a non-existent resource returns 412",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.1"}},
+		MinPrincipals: 1,
 		Fn:          testIfMatchWildcardMissing412,
 	})
 	suite.Register(suite.Test{
@@ -111,6 +119,7 @@ func init() {
 		Description: "PUT with If-None-Match: * on a new URL returns 201 Created",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.2"}, {RFC: "RFC 6352", Section: "§5.3.4"}},
+		MinPrincipals: 1,
 		Fn:          testIfNoneMatchWildcardNewResource201,
 	})
 	suite.Register(suite.Test{
@@ -119,6 +128,7 @@ func init() {
 		Description: "PUT with If-None-Match: * on an existing resource returns 412",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.2"}, {RFC: "RFC 6352", Section: "§5.3.4"}},
+		MinPrincipals: 1,
 		Fn:          testIfNoneMatchWildcardExisting412,
 	})
 	suite.Register(suite.Test{
@@ -127,6 +137,7 @@ func init() {
 		Description: "GET with If-None-Match: <current-etag> returns 304 Not Modified with no body",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.2"}},
+		MinPrincipals: 1,
 		Fn:          testIfNoneMatchGetCached304,
 	})
 	suite.Register(suite.Test{
@@ -135,6 +146,7 @@ func init() {
 		Description: "GET with If-None-Match: <stale-etag> returns 200 with body",
 		Severity:    suite.Must,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.2"}},
+		MinPrincipals: 1,
 		Fn:          testIfNoneMatchGetStale200,
 	})
 	suite.Register(suite.Test{
@@ -143,6 +155,7 @@ func init() {
 		Description: "GET with If-Modified-Since: <future-date> returns 304 when resource is unchanged",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.3"}},
+		MinPrincipals: 1,
 		Fn:          testIfModifiedSinceNotModified304,
 	})
 	suite.Register(suite.Test{
@@ -151,6 +164,7 @@ func init() {
 		Description: "GET with If-Modified-Since: <past-date> returns 200 (resource was created after that date)",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.3"}},
+		MinPrincipals: 1,
 		Fn:          testIfModifiedSinceModified200,
 	})
 	suite.Register(suite.Test{
@@ -159,6 +173,7 @@ func init() {
 		Description: "PUT with If-Unmodified-Since: <future-date> returns 2xx (resource not modified since then)",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.4"}},
+		MinPrincipals: 1,
 		Fn:          testIfUnmodifiedSinceNotModifiedSucceeds,
 	})
 	suite.Register(suite.Test{
@@ -167,6 +182,7 @@ func init() {
 		Description: "PUT with If-Unmodified-Since: <past-date> returns 412 (resource was modified after that date)",
 		Severity:    suite.Should,
 		References:  []suite.RFCRef{{RFC: "RFC 7232", Section: "§3.4"}},
+		MinPrincipals: 1,
 		Fn:          testIfUnmodifiedSinceModified412,
 	})
 }

@@ -28,6 +28,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND on a collection returns DAV:sync-token as a protected property",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testSyncTokenProperty,
 	})
 	suite.Register(suite.Test{
@@ -35,6 +36,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND on a collection lists DAV:sync-collection in DAV:supported-report-set",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testSupportedReportSet,
 	})
 	suite.Register(suite.Test{
@@ -42,6 +44,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT with empty token returns all members and a sync-token, no removed entries",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testInitialSync,
 	})
 	suite.Register(suite.Test{
@@ -49,6 +52,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT after PUT returns new resource as changed with propstat and no status element",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testSubsequentSyncChanged,
 	})
 	suite.Register(suite.Test{
@@ -56,6 +60,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT after DELETE returns resource as removed with 404 status and no propstat",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testSubsequentSyncRemoved,
 	})
 	suite.Register(suite.Test{
@@ -63,6 +68,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "resource added then removed between syncs is reported as removed, not changed",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testAddThenRemove,
 	})
 	suite.Register(suite.Test{
@@ -70,6 +76,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "resource removed then remapped at same URL is reported as changed, not removed",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testRemoveThenRemap,
 	})
 	suite.Register(suite.Test{
@@ -77,6 +84,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-token returned by sync-collection REPORT is a valid URI",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testSyncTokenIsURI,
 	})
 	suite.Register(suite.Test{
@@ -84,6 +92,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT with Depth header other than 0 returns 400 Bad Request",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testDepthNonZeroRejected,
 	})
 	suite.Register(suite.Test{
@@ -91,6 +100,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT with an invalid sync token returns a 4xx error",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testInvalidTokenRejected,
 	})
 	suite.Register(suite.Test{
@@ -98,6 +108,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND DAV:allprop does not include DAV:sync-token in 200 propstat",
 		Severity:    suite.Should,
+		MinPrincipals: 1,
 		Fn:          testSyncTokenNotInAllprop,
 	})
 	suite.Register(suite.Test{
@@ -105,6 +116,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT response contains each member URL exactly once",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testNoDuplicateHrefs,
 	})
 	suite.Register(suite.Test{
@@ -112,6 +124,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT issued against a non-collection resource returns 4xx",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testReportOnNonCollection,
 	})
 	suite.Register(suite.Test{
@@ -119,6 +132,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "DAV:limit in request causes server to truncate with 507 or return postcondition error",
 		Severity:    suite.May,
+		MinPrincipals: 1,
 		Fn:          testClientLimit,
 	})
 	suite.Register(suite.Test{
@@ -126,6 +140,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND with current sync-token in If header succeeds",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testIfHeaderValidToken,
 	})
 	suite.Register(suite.Test{
@@ -133,6 +148,7 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND with an outdated sync-token in If header returns 412 Precondition Failed",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testIfHeaderStaleToken,
 	})
 }

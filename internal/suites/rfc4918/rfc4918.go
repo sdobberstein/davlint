@@ -28,6 +28,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "OPTIONS on a WebDAV collection returns DAV header and all required methods in Allow",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testOptions,
 	})
 	suite.Register(suite.Test{
@@ -35,6 +36,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "MKCOL on an unmapped URL creates a collection and returns 201",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testMkcol,
 	})
 	suite.Register(suite.Test{
@@ -42,6 +44,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "MKCOL on an already-mapped URL returns 405 or 409",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testMkcolDuplicate,
 	})
 	suite.Register(suite.Test{
@@ -49,6 +52,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "PUT a vCard to a new URL returns 201 Created",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testPutContact,
 	})
 	suite.Register(suite.Test{
@@ -56,6 +60,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "GET on a vCard resource returns 200 with Content-Type text/vcard",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testGetContact,
 	})
 	suite.Register(suite.Test{
@@ -63,6 +68,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "GET on a vCard resource returns a non-empty ETag header",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testETagOnGet,
 	})
 	suite.Register(suite.Test{
@@ -70,6 +76,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "PROPFIND depth 0 on a vCard resource returns 207 with getetag, getcontenttype, getcontentlength",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testPropfindDepth0,
 	})
 	suite.Register(suite.Test{
@@ -77,6 +84,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "PROPFIND depth 1 on a collection returns 207 including child resources",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testPropfindDepth1,
 	})
 	suite.Register(suite.Test{
@@ -84,6 +92,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "PROPFIND allprop on a vCard resource returns 207 with standard live properties",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testPropfindAllprop,
 	})
 	suite.Register(suite.Test{
@@ -91,6 +100,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "PROPFIND with Depth: infinity on a collection returns 403",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testPropfindInfinityForbidden,
 	})
 	suite.Register(suite.Test{
@@ -98,6 +108,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "PROPPATCH set stores a dead property; subsequent PROPFIND returns it in a 200 propstat",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testProppatchSet,
 	})
 	suite.Register(suite.Test{
@@ -105,6 +116,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "DELETE with a matching If-Match ETag returns 204; subsequent GET returns 404",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testDelete,
 	})
 	suite.Register(suite.Test{
@@ -112,6 +124,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "DELETE with a mismatched If-Match ETag returns 412 Precondition Failed",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testDeleteETagMismatch,
 	})
 	suite.Register(suite.Test{
@@ -119,6 +132,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "COPY creates a new resource at the destination; source still exists",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testCopy,
 	})
 	suite.Register(suite.Test{
@@ -126,6 +140,7 @@ func init() {
 		Suite:       "rfc4918",
 		Description: "MOVE relocates a resource; source returns 404, destination returns 200",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testMove,
 	})
 }

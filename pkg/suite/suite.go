@@ -47,7 +47,9 @@ type Test struct {
 	// Mode is "" or "lint" (runs in both modes) or "conformance" (skipped in lint mode).
 	Mode string
 	// MinPrincipals is the minimum number of configured principals required.
-	// 0 means no requirement. 2 means Secondary() must be available.
+	// 1 is the baseline for any test that uses Primary(). 2 means
+	// Secondary() must be available. 0 is reserved for tests that use only
+	// Unauthenticated() and need no configured principal at all.
 	MinPrincipals int
 	// References are RFC section citations for this test.
 	References []RFCRef

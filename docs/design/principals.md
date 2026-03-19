@@ -37,11 +37,24 @@ Tests declare the minimum number of principals they require:
 
 ```go
 suite.Test{
+    ID:            "rfc4918.propfind-allprop",
+    MinPrincipals: 1,   // baseline: uses Primary() only
+    ...
+}
+
+suite.Test{
     ID:            "rfc4918.lock-conflict",
-    MinPrincipals: 2,
+    MinPrincipals: 2,   // uses Secondary()
     ...
 }
 ```
+
+| Value | Meaning |
+|-------|---------|
+| `1` | Uses `Primary()` only — the baseline for any authenticated test |
+| `2` | Uses `Secondary()` — locking conflicts, ACL enforcement, sync visibility |
+| `3` | Uses `Clients[2]` — ACL outsider scenarios |
+| `0` | Reserved for tests that use only `Unauthenticated()` and need no configured principal |
 
 If fewer principals are configured than a test requires, the test is **skipped** — not failed. A misconfigured account count is not a server conformance issue.
 
@@ -91,4 +104,4 @@ rfc4918.lock-conflict    must    2    locking    RFC 4918 §6    ...
 
 ## Unauthenticated Access
 
-`sess.Unauthenticated()` returns a client with no credentials, derived from the configured server URL. It is always available regardless of how many principals are configured and does not count toward `MinPrincipals`. Tests that only need unauthenticated access (e.g. `rfc6352.unauthenticated-access-denied`) require only 1 principal.
+`sess.Unauthenticated()` returns a client with no credentials, derived from the configured server URL. It is always available regardless of how many principals are configured and does not count toward `MinPrincipals`. Tests that use both an authenticated and unauthenticated client (e.g. `rfc6352.unauthenticated-propfind-denied`) set `MinPrincipals: 1` — they need one configured principal but also exercise the unauthenticated path.

@@ -30,6 +30,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "GET /.well-known/carddav returns 301/303/307 with a Location header (RFC 6764 §5 MUST)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testWellKnownRedirect,
 	})
 	suite.Register(suite.Test{
@@ -37,6 +38,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "GET /.well-known/carddav MUST NOT return 2xx; server must redirect, not serve (RFC 6764 §5 MUST NOT)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testWellKnownNoDirectServe,
 	})
 	suite.Register(suite.Test{
@@ -44,6 +46,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "Redirect from /.well-known/carddav SHOULD include a Cache-Control header (RFC 6764 §5 SHOULD)",
 		Severity:    suite.Should,
+		MinPrincipals: 1,
 		Fn:          testWellKnownCacheControl,
 	})
 	suite.Register(suite.Test{
@@ -51,6 +54,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "If server requires auth on /.well-known/carddav (401), authenticated request still redirects (RFC 6764 §5 MAY)",
 		Severity:    suite.May,
+		MinPrincipals: 1,
 		Fn:          testWellKnownAuthRedirect,
 	})
 	suite.Register(suite.Test{
@@ -58,6 +62,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "OPTIONS on the context path returns DAV compliance classes: 1, 2, access-control (RFC 4918)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testDAVHeader,
 	})
 	suite.Register(suite.Test{
@@ -65,6 +70,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "Authenticated PROPFIND on the context path returns DAV:current-user-principal (RFC 6764 §6)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testCurrentUserPrincipal,
 	})
 	suite.Register(suite.Test{
@@ -72,6 +78,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "Unauthenticated PROPFIND for DAV:current-user-principal MUST return 401 (RFC 6764 §7 MUST)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testCurrentUserPrincipalRequiresAuth,
 	})
 	suite.Register(suite.Test{
@@ -79,6 +86,7 @@ func init() {
 		Suite:       "rfc6764",
 		Description: "PROPFIND on the principal URL returns carddav:addressbook-home-set (RFC 6764 §6)",
 		Severity:    suite.Must,
+		MinPrincipals: 1,
 		Fn:          testAddressBookHomeSet,
 	})
 }
