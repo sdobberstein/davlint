@@ -388,6 +388,38 @@ func init() {
 		Severity:    suite.Must,
 		Fn:          testUnauthenticatedReportDenied,
 	})
+	// §5.1 R-01
+	suite.Register(suite.Test{
+		ID:          "rfc6352.put-v3",
+		Suite:       "rfc6352",
+		Description: "PUT a vCard 3.0 returns 201 Created",
+		Severity:    suite.Must,
+		Fn:          testPutV3,
+	})
+	// §5.1 R-01
+	suite.Register(suite.Test{
+		ID:          "rfc6352.stored-as-v4",
+		Suite:       "rfc6352",
+		Description: "After PUT of vCard 3.0, default GET returns VERSION:4.0",
+		Severity:    suite.Must,
+		Fn:          testStoredAsV4,
+	})
+	// §6.5.3
+	suite.Register(suite.Test{
+		ID:          "rfc6352.get-accept-v3",
+		Suite:       "rfc6352",
+		Description: "GET with Accept: text/vcard; version=3.0 returns VERSION:3.0 after PUT of 3.0",
+		Severity:    suite.Must,
+		Fn:          testGetAcceptV3,
+	})
+	// §6.5.3 / RFC 2426 §3.3.2
+	suite.Register(suite.Test{
+		ID:          "rfc6352.email-roundtrip",
+		Suite:       "rfc6352",
+		Description: "Email type is preserved correctly when serving vCard 4.0 content as 3.0",
+		Severity:    suite.Must,
+		Fn:          testEmailRoundtrip,
+	})
 }
 
 // discoverHomeSet returns the addressbook-home-set URL for the primary client,
@@ -2253,6 +2285,117 @@ func testSupportedFilterPrecondition(ctx context.Context, sess *suite.Session) e
 	// Server rejected the query: the response MUST contain the supported-filter precondition.
 	if !strings.Contains(string(resp.Body), "supported-filter") {
 		return fmt.Errorf("addressbook-query with unsupported filter: got %d but response body missing CARDDAV:supported-filter precondition (RFC 6352 §8.5)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testPutV3 verifies RFC 6352 §5.1: the server MUST support vCard 3.0 as an
+// address object media type. A PUT of a valid vCard 3.0 must return 201 Created.
+func testPutV3(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"alice.vcf", "text/vcard; charset=utf-8", []byte(fixtures.AliceV3))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard 3.0: got %d, want 201", resp.StatusCode)
+	}
+	return nil
+}
+
+// testStoredAsV4 verifies RFC 6352 §5.1: the server stores address objects
+// internally as vCard 4.0. A default GET after PUT of a vCard 3.0 must return
+// a body containing VERSION:4.0.
+func testStoredAsV4(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := c.Put(ctx, colURL+"alice.vcf", "text/vcard; charset=utf-8", []byte(fixtures.AliceV3)); err != nil {
+		return err
+	}
+	resp, err := c.Get(ctx, colURL+"alice.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	return assert.BodyHas(resp.Body, "VERSION:4.0")
+}
+
+// testGetAcceptV3 verifies RFC 6352 §6.5.3: the server MUST support serving
+// address objects in vCard 3.0 format when the client requests it via
+// Accept: text/vcard; version=3.0.
+func testGetAcceptV3(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := c.Put(ctx, colURL+"alice.vcf", "text/vcard; charset=utf-8", []byte(fixtures.AliceV3)); err != nil {
+		return err
+	}
+	resp, err := c.GetWithAccept(ctx, colURL+"alice.vcf", "text/vcard; version=3.0")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	return assert.BodyHas(resp.Body, "VERSION:3.0")
+}
+
+// testEmailRoundtrip verifies RFC 6352 §6.5.3 / RFC 2426 §3.3.2: when the
+// server serves a vCard 4.0 address object as vCard 3.0, the EMAIL TYPE
+// parameter MUST include INTERNET (required by RFC 2426 for all email addresses).
+func testEmailRoundtrip(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := c.Put(ctx, colURL+"alice.vcf", "text/vcard; charset=utf-8", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+	resp, err := c.GetWithAccept(ctx, colURL+"alice.vcf", "text/vcard; version=3.0")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	if err := assert.BodyHas(resp.Body, "INTERNET"); err != nil {
+		return fmt.Errorf("email type conversion to 3.0: %w", err)
 	}
 	return nil
 }
