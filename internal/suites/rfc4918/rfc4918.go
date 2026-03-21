@@ -24,124 +24,174 @@ import (
 
 func init() {
 	suite.Register(suite.Test{
-		ID:          "rfc4918.options",
-		Suite:       "rfc4918",
-		Description: "OPTIONS on a WebDAV collection returns DAV header and all required methods in Allow",
-		Severity:    suite.Must,
+		ID:            "rfc4918.options",
+		Suite:         "rfc4918",
+		Description:   "OPTIONS on a WebDAV collection returns DAV header and all required methods in Allow",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testOptions,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§10.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-10.1"},
+		},
+		Fn: testOptions,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.mkcol",
-		Suite:       "rfc4918",
-		Description: "MKCOL on an unmapped URL creates a collection and returns 201",
-		Severity:    suite.Must,
+		ID:            "rfc4918.mkcol",
+		Suite:         "rfc4918",
+		Description:   "MKCOL on an unmapped URL creates a collection and returns 201",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testMkcol,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.3", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.3"},
+		},
+		Fn: testMkcol,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.mkcol-duplicate",
-		Suite:       "rfc4918",
-		Description: "MKCOL on an already-mapped URL returns 405 or 409",
-		Severity:    suite.Must,
+		ID:            "rfc4918.mkcol-duplicate",
+		Suite:         "rfc4918",
+		Description:   "MKCOL on an already-mapped URL returns 405 or 409",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testMkcolDuplicate,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.3", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.3"},
+		},
+		Fn: testMkcolDuplicate,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.put-contact",
-		Suite:       "rfc4918",
-		Description: "PUT a vCard to a new URL returns 201 Created",
-		Severity:    suite.Must,
+		ID:            "rfc4918.put-contact",
+		Suite:         "rfc4918",
+		Description:   "PUT a vCard to a new URL returns 201 Created",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testPutContact,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.7", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.7"},
+		},
+		Fn: testPutContact,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.get-contact",
-		Suite:       "rfc4918",
-		Description: "GET on a vCard resource returns 200 with Content-Type text/vcard",
-		Severity:    suite.Must,
+		ID:            "rfc4918.get-contact",
+		Suite:         "rfc4918",
+		Description:   "GET on a vCard resource returns 200 with Content-Type text/vcard",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testGetContact,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.4", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.4"},
+		},
+		Fn: testGetContact,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.etag-on-get",
-		Suite:       "rfc4918",
-		Description: "GET on a vCard resource returns a non-empty ETag header",
-		Severity:    suite.Must,
+		ID:            "rfc4918.etag-on-get",
+		Suite:         "rfc4918",
+		Description:   "GET on a vCard resource returns a non-empty ETag header",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testETagOnGet,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§8.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-8.6"},
+			{RFC: "RFC 4918", Section: "§15.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-15.6"},
+		},
+		Fn: testETagOnGet,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.propfind-depth0",
-		Suite:       "rfc4918",
-		Description: "PROPFIND depth 0 on a vCard resource returns 207 with getetag, getcontenttype, getcontentlength",
-		Severity:    suite.Must,
+		ID:            "rfc4918.propfind-depth0",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND depth 0 on a vCard resource returns 207 with getetag, getcontenttype, getcontentlength",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testPropfindDepth0,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.1"},
+		},
+		Fn: testPropfindDepth0,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.propfind-depth1",
-		Suite:       "rfc4918",
-		Description: "PROPFIND depth 1 on a collection returns 207 including child resources",
-		Severity:    suite.Must,
+		ID:            "rfc4918.propfind-depth1",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND depth 1 on a collection returns 207 including child resources",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testPropfindDepth1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.1"},
+		},
+		Fn: testPropfindDepth1,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.propfind-allprop",
-		Suite:       "rfc4918",
-		Description: "PROPFIND allprop on a vCard resource returns 207 with standard live properties",
-		Severity:    suite.Must,
+		ID:            "rfc4918.propfind-allprop",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND allprop on a vCard resource returns 207 with standard live properties",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testPropfindAllprop,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.1"},
+		},
+		Fn: testPropfindAllprop,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.propfind-depth-infinity-forbidden",
-		Suite:       "rfc4918",
-		Description: "PROPFIND with Depth: infinity on a collection returns 403",
-		Severity:    suite.Must,
+		ID:            "rfc4918.propfind-depth-infinity-rejected",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND with Depth: infinity on a collection returns 403",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testPropfindInfinityForbidden,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.1"},
+		},
+		Fn: testPropfindInfinityForbidden,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.proppatch-set",
-		Suite:       "rfc4918",
-		Description: "PROPPATCH set stores a dead property; subsequent PROPFIND returns it in a 200 propstat",
-		Severity:    suite.Must,
+		ID:            "rfc4918.proppatch-set",
+		Suite:         "rfc4918",
+		Description:   "PROPPATCH set stores a dead property; subsequent PROPFIND returns it in a 200 propstat",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testProppatchSet,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.2", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.2"},
+		},
+		Fn: testProppatchSet,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.delete",
-		Suite:       "rfc4918",
-		Description: "DELETE with a matching If-Match ETag returns 204; subsequent GET returns 404",
-		Severity:    suite.Must,
+		ID:            "rfc4918.delete",
+		Suite:         "rfc4918",
+		Description:   "DELETE with a matching If-Match ETag returns 204; subsequent GET returns 404",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
 		MinPrincipals: 1,
-		Fn:          testDelete,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.6"},
+			{RFC: "RFC 4918", Section: "§10.4", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-10.4"},
+		},
+		Fn: testDelete,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.delete-etag-mismatch",
-		Suite:       "rfc4918",
-		Description: "DELETE with a mismatched If-Match ETag returns 412 Precondition Failed",
-		Severity:    suite.Must,
+		ID:            "rfc4918.delete-etag-mismatch",
+		Suite:         "rfc4918",
+		Description:   "DELETE with a mismatched If-Match ETag returns 412 Precondition Failed",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
 		MinPrincipals: 1,
-		Fn:          testDeleteETagMismatch,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.6"},
+			{RFC: "RFC 4918", Section: "§10.4", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-10.4"},
+		},
+		Fn: testDeleteETagMismatch,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.copy",
-		Suite:       "rfc4918",
-		Description: "COPY creates a new resource at the destination; source still exists",
-		Severity:    suite.Must,
+		ID:            "rfc4918.copy",
+		Suite:         "rfc4918",
+		Description:   "COPY creates a new resource at the destination; source still exists",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testCopy,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.8", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.8"},
+		},
+		Fn: testCopy,
 	})
 	suite.Register(suite.Test{
-		ID:          "rfc4918.move",
-		Suite:       "rfc4918",
-		Description: "MOVE relocates a resource; source returns 404, destination returns 200",
-		Severity:    suite.Must,
+		ID:            "rfc4918.move",
+		Suite:         "rfc4918",
+		Description:   "MOVE relocates a resource; source returns 404, destination returns 200",
+		Severity:      suite.Must,
 		MinPrincipals: 1,
-		Fn:          testMove,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.9", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.9"},
+		},
+		Fn: testMove,
 	})
 }
 
