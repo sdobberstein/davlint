@@ -21,6 +21,58 @@ import (
 )
 
 func init() {
+	// §2.1: Content MUST begin with BEGIN:VCARD.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.reject-missing-begin",
+		Suite:         "rfc2426",
+		Description:   "PUT a body without BEGIN:VCARD is rejected with 4xx (RFC 2426 §2.1 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.1"},
+		},
+		Fn: testRejectMissingBegin,
+	})
+	// §2.1: Content MUST end with END:VCARD.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.reject-missing-end",
+		Suite:         "rfc2426",
+		Description:   "PUT a body without END:VCARD is rejected with 4xx (RFC 2426 §2.1 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.1"},
+		},
+		Fn: testRejectMissingEnd,
+	})
+	// §2.1: BEGIN:VCARD MUST be the first line.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.reject-begin-not-first",
+		Suite:         "rfc2426",
+		Description:   "PUT a body where BEGIN:VCARD is not the first line is rejected with 4xx (RFC 2426 §2.1 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.1"},
+		},
+		Fn: testRejectBeginNotFirst,
+	})
+	// §2.1: END:VCARD MUST be the last line.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.reject-end-not-last",
+		Suite:         "rfc2426",
+		Description:   "PUT a body where END:VCARD is not the last line is rejected with 4xx (RFC 2426 §2.1 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.1"},
+		},
+		Fn: testRejectEndNotLast,
+	})
 	// §3.1.1: FN MUST be present.
 	suite.Register(suite.Test{
 		ID:            "rfc2426.reject-missing-fn",
@@ -100,6 +152,32 @@ func init() {
 		},
 		Fn: testFoldedLineTabParsed,
 	})
+	// §2.3: Escaped semicolon in NOTE text value MUST survive a round-trip.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.semicolon-escape-roundtrip-note",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with a backslash-escaped semicolon in NOTE; GET returns both parts of the value (RFC 2426 §2.3 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.3", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.3"},
+		},
+		Fn: testSemicolonEscapeRoundtripNote,
+	})
+	// §3.2.1: Absent ADR components MUST retain their SEMI-COLON separators.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.adr-structure-roundtrip",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with a sparse ADR; GET returns ADR with component values in correct positions (RFC 2426 §3.2.1 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.2.1"},
+		},
+		Fn: testADRStructureRoundtrip,
+	})
 	// §2.3: SEMI-COLON in a text value MUST be backslash-escaped.
 	suite.Register(suite.Test{
 		ID:            "rfc2426.semicolon-escape-accepted",
@@ -143,6 +221,35 @@ func makeTestCollection(ctx context.Context, c *client.Client, homeSet string) (
 // These represent malformed or edge-case vCards used only within this suite.
 // They intentionally omit required fields or exercise format corner-cases and
 // are not suitable for use as general-purpose test data.
+
+// vcardNoBegin is missing the required BEGIN:VCARD delimiter (RFC 2426 §2.1).
+const vcardNoBegin = "VERSION:3.0\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// vcardNoEnd is missing the required END:VCARD delimiter (RFC 2426 §2.1).
+const vcardNoEnd = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n"
+
+// vcardBeginNotFirst has BEGIN:VCARD after a property line (RFC 2426 §2.1
+// requires BEGIN:VCARD to be the first line).
+const vcardBeginNotFirst = "FN:Alice Test\r\n" +
+	"BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// vcardEndNotLast has END:VCARD before a trailing property line (RFC 2426 §2.1
+// requires END:VCARD to be the last line).
+const vcardEndNotLast = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n" +
+	"NOTE:trailing line\r\n"
 
 // vcardNoFN is missing the required FN property (RFC 2426 §3.1.1).
 const vcardNoFN = "BEGIN:VCARD\r\n" +
@@ -207,6 +314,29 @@ func unfoldVCard(body []byte) []byte {
 	return body
 }
 
+// vcardNoteEscapedSemicolon is a valid vCard 3.0 where the NOTE value contains
+// a backslash-escaped semicolon per RFC 2426 §2.3. The full value is
+// "First part; second part"; if the server incorrectly treats \; as a field
+// separator, "second part" will be lost in a round-trip.
+const vcardNoteEscapedSemicolon = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:e0000000-0000-0000-0000-000000000002\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"NOTE:First part\\; second part\r\n" +
+	"END:VCARD\r\n"
+
+// vcardSparseADR is a valid vCard 3.0 with a sparse ADR where PO Box and
+// Extended Address are empty but their SEMI-COLON separators MUST be retained
+// per RFC 2426 §3.2.1.
+const vcardSparseADR = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:a0000000-0000-0000-0000-000000000001\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"ADR;TYPE=HOME:;;123 Main St;Springfield;IL;62701;USA\r\n" +
+	"END:VCARD\r\n"
+
 // vcardEscapedSemicolon is a valid vCard 3.0 where the FN value contains a
 // backslash-escaped semicolon per RFC 2426 §2.3.
 const vcardEscapedSemicolon = "BEGIN:VCARD\r\n" +
@@ -240,6 +370,22 @@ func putInvalidVCard(ctx context.Context, sess *suite.Session, body []byte, desc
 		return fmt.Errorf("%s: got %d, want 4xx", desc, resp.StatusCode)
 	}
 	return nil
+}
+
+func testRejectMissingBegin(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardNoBegin), "PUT body without BEGIN:VCARD")
+}
+
+func testRejectMissingEnd(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardNoEnd), "PUT body without END:VCARD")
+}
+
+func testRejectBeginNotFirst(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardBeginNotFirst), "PUT body where BEGIN:VCARD is not the first line")
+}
+
+func testRejectEndNotLast(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardEndNotLast), "PUT body where END:VCARD is not the last line")
 }
 
 func testRejectMissingFN(ctx context.Context, sess *suite.Session) error {
@@ -332,6 +478,78 @@ func showCRLF(body []byte) string {
 	s = strings.ReplaceAll(s, "\r\n", "↵\n")
 	s = strings.ReplaceAll(s, "\t", "→")
 	return s
+}
+
+func testSemicolonEscapeRoundtripNote(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"note-escape.vcf", "text/vcard; charset=utf-8", []byte(vcardNoteEscapedSemicolon))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard with escaped semicolon in NOTE: got %d, want 201", resp.StatusCode)
+	}
+
+	resp, err = c.Get(ctx, colURL+"note-escape.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// Both parts of the NOTE value must be present after unfolding; if the
+	// server split on \; the text after the semicolon will be lost.
+	unfolded := unfoldVCard(resp.Body)
+	if err := assert.BodyHas(unfolded, "second part"); err != nil {
+		return fmt.Errorf("NOTE escaped-semicolon round-trip: value after '\\;' not found; server may have split on the semicolon: %w", err)
+	}
+	return nil
+}
+
+func testADRStructureRoundtrip(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"adr.vcf", "text/vcard; charset=utf-8", []byte(vcardSparseADR))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard with sparse ADR: got %d, want 201", resp.StatusCode)
+	}
+
+	resp, err = c.Get(ctx, colURL+"adr.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// Locality and postal code must appear in the response; if absent components
+	// collapse their separators, these values shift to wrong positions.
+	unfolded := unfoldVCard(resp.Body)
+	if err := assert.BodyHas(unfolded, "Springfield"); err != nil {
+		return fmt.Errorf("ADR structure round-trip: locality 'Springfield' not found: %w", err)
+	}
+	return assert.BodyHas(unfolded, "62701")
 }
 
 func testSemicolonEscapeAccepted(ctx context.Context, sess *suite.Session) error {
