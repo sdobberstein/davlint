@@ -28,7 +28,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND on a collection returns DAV:sync-token as a protected property",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§4", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-4"},
+		},
 		Fn:          testSyncTokenProperty,
 	})
 	suite.Register(suite.Test{
@@ -36,7 +40,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND on a collection lists DAV:sync-collection in DAV:supported-report-set",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.2", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.2"},
+		},
 		Fn:          testSupportedReportSet,
 	})
 	suite.Register(suite.Test{
@@ -44,7 +52,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT with empty token returns all members and a sync-token, no removed entries",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.4", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.4"},
+		},
 		Fn:          testInitialSync,
 	})
 	suite.Register(suite.Test{
@@ -52,7 +64,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT after PUT returns new resource as changed with propstat and no status element",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.5"},
+		},
 		Fn:          testSubsequentSyncChanged,
 	})
 	suite.Register(suite.Test{
@@ -60,7 +76,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT after DELETE returns resource as removed with 404 status and no propstat",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.5"},
+		},
 		Fn:          testSubsequentSyncRemoved,
 	})
 	suite.Register(suite.Test{
@@ -68,7 +88,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "resource added then removed between syncs is reported as removed, not changed",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.5"},
+		},
 		Fn:          testAddThenRemove,
 	})
 	suite.Register(suite.Test{
@@ -76,7 +100,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "resource removed then remapped at same URL is reported as changed, not removed",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.5"},
+		},
 		Fn:          testRemoveThenRemap,
 	})
 	suite.Register(suite.Test{
@@ -84,7 +112,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-token returned by sync-collection REPORT is a valid URI",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.2", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.2"},
+		},
 		Fn:          testSyncTokenIsURI,
 	})
 	suite.Register(suite.Test{
@@ -92,7 +124,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT with Depth header other than 0 returns 400 Bad Request",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.2", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.2"},
+		},
 		Fn:          testDepthNonZeroRejected,
 	})
 	suite.Register(suite.Test{
@@ -100,7 +136,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT with an invalid sync token returns a 4xx error",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.6", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.6"},
+		},
 		Fn:          testInvalidTokenRejected,
 	})
 	suite.Register(suite.Test{
@@ -108,7 +148,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND DAV:allprop does not include DAV:sync-token in 200 propstat",
 		Severity:    suite.Should,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§4", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-4"},
+		},
 		Fn:          testSyncTokenNotInAllprop,
 	})
 	suite.Register(suite.Test{
@@ -116,7 +160,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT response contains each member URL exactly once",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.3", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.3"},
+		},
 		Fn:          testNoDuplicateHrefs,
 	})
 	suite.Register(suite.Test{
@@ -124,7 +172,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "sync-collection REPORT issued against a non-collection resource returns 4xx",
 		Severity:    suite.Must,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.2", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.2"},
+		},
 		Fn:          testReportOnNonCollection,
 	})
 	suite.Register(suite.Test{
@@ -132,7 +184,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "DAV:limit in request causes server to truncate with 507 or return postcondition error",
 		Severity:    suite.May,
+		Tags:        []string{"sync"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.7", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.7"},
+		},
 		Fn:          testClientLimit,
 	})
 	suite.Register(suite.Test{
@@ -140,7 +196,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND with current sync-token in If header succeeds",
 		Severity:    suite.Must,
+		Tags:        []string{"sync", "conditional"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-5"},
+		},
 		Fn:          testIfHeaderValidToken,
 	})
 	suite.Register(suite.Test{
@@ -148,7 +208,11 @@ func init() {
 		Suite:       "rfc6578",
 		Description: "PROPFIND with an outdated sync-token in If header returns 412 Precondition Failed",
 		Severity:    suite.Must,
+		Tags:        []string{"sync", "conditional"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-5"},
+		},
 		Fn:          testIfHeaderStaleToken,
 	})
 }
