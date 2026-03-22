@@ -32,6 +32,9 @@ func init() {
 		Description: "PROPFIND on an address book returns D:supported-report-set advertising addressbook-query and addressbook-multiget",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§7.1.4", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-7.1.4"},
+		},
 		Fn:          testSupportedReportSet,
 	})
 	suite.Register(suite.Test{
@@ -40,6 +43,9 @@ func init() {
 		Description: "addressbook-query REPORT with no filter returns all contacts with getetag and address-data",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.6", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.6"},
+		},
 		Fn:          testAddressbookQueryNoFilter,
 	})
 	suite.Register(suite.Test{
@@ -48,6 +54,9 @@ func init() {
 		Description: "addressbook-query REPORT with a C:prop-filter text-match returns only matching contacts",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.5.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.5.1"},
+		},
 		Fn:          testAddressbookQueryPropFilter,
 	})
 	suite.Register(suite.Test{
@@ -56,6 +65,9 @@ func init() {
 		Description: "addressbook-multiget REPORT returns getetag and address-data for each requested href",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.7", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.7"},
+		},
 		Fn:          testAddressbookMultiget,
 	})
 	suite.Register(suite.Test{
@@ -64,6 +76,9 @@ func init() {
 		Description: "addressbook-multiget REPORT returns a 404 response entry for a non-existent href",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.7", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.7"},
+		},
 		Fn:          testAddressbookMultigetNotFound,
 	})
 	suite.Register(suite.Test{
@@ -72,6 +87,9 @@ func init() {
 		Description: `OPTIONS on an address book collection returns "addressbook" in the DAV response header`,
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.1"},
+		},
 		Fn:          testOptionsAddressbookToken,
 	})
 	suite.Register(suite.Test{
@@ -80,6 +98,9 @@ func init() {
 		Description: "PROPFIND on an address book collection reports CARDDAV:addressbook in DAV:resourcetype",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§5.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-5.2"},
+		},
 		Fn:          testAddressbookResourceType,
 	})
 	suite.Register(suite.Test{
@@ -87,7 +108,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "GET on an address object resource returns an ETag response header",
 		Severity:    suite.Must,
+		Tags:        []string{"conditional"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.3"},
+		},
 		Fn:          testGetETagHeader,
 	})
 	suite.Register(suite.Test{
@@ -95,7 +120,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "ETag returned for an address object resource is a strong entity tag (no W/ prefix)",
 		Severity:    suite.Must,
+		Tags:        []string{"conditional"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.3"},
+		},
 		Fn:          testGetETagStrong,
 	})
 	suite.Register(suite.Test{
@@ -103,7 +132,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT response for a new address object resource includes an ETag header",
 		Severity:    suite.Should,
+		Tags:        []string{"conditional"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.3"},
+		},
 		Fn:          testPutETagResponse,
 	})
 	suite.Register(suite.Test{
@@ -112,6 +145,9 @@ func init() {
 		Description: "PROPFIND on an address book returns CARDDAV:supported-collation-set including the two required collations",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3.1"},
+		},
 		Fn:          testSupportedCollationSet,
 	})
 	suite.Register(suite.Test{
@@ -120,6 +156,9 @@ func init() {
 		Description: "Unauthenticated PROPFIND on an address book collection is rejected with 401 or 403",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§13", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-13"},
+		},
 		Fn:          testUnauthenticatedAccessDenied,
 	})
 	suite.Register(suite.Test{
@@ -128,6 +167,9 @@ func init() {
 		Description: "PROPFIND DAV:allprop on the principal does not include CARDDAV:addressbook-home-set",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§7.1.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-7.1.1"},
+		},
 		Fn:          testHomeSetNotInAllprop,
 	})
 	suite.Register(suite.Test{
@@ -135,7 +177,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT with an unsupported media type is rejected with CARDDAV:supported-address-data precondition",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testPutUnsupportedMediaType,
 	})
 	suite.Register(suite.Test{
@@ -143,7 +189,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT with invalid vCard data is rejected with CARDDAV:valid-address-data precondition",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testPutInvalidVCard,
 	})
 	suite.Register(suite.Test{
@@ -151,7 +201,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT with a UID already in use is rejected with CARDDAV:no-uid-conflict precondition",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testPutUIDConflict,
 	})
 	suite.Register(suite.Test{
@@ -160,6 +214,9 @@ func init() {
 		Description: "PUT of an oversized address object is rejected with CARDDAV:max-resource-size precondition",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testPutMaxResourceSize,
 	})
 	suite.Register(suite.Test{
@@ -168,6 +225,9 @@ func init() {
 		Description: "Creating an address book collection inside another address book collection is rejected",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§5.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-5.2"},
+		},
 		Fn:          testNoNestedAddressbook,
 	})
 	suite.Register(suite.Test{
@@ -176,6 +236,9 @@ func init() {
 		Description: "addressbook-query with collation=i;unicode-casemap returns matching contacts only",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3"},
+		},
 		Fn:          testQueryCollationUnicode,
 	})
 	suite.Register(suite.Test{
@@ -184,6 +247,9 @@ func init() {
 		Description: "addressbook-query with collation=i;ascii-casemap returns matching contacts only",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3"},
+		},
 		Fn:          testQueryCollationASCII,
 	})
 	suite.Register(suite.Test{
@@ -192,6 +258,9 @@ func init() {
 		Description: "addressbook-query with an unsupported collation is rejected with CARDDAV:supported-collation precondition",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3"},
+		},
 		Fn:          testQueryUnsupportedCollation,
 	})
 	suite.Register(suite.Test{
@@ -199,7 +268,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT an address object with non-standard X- properties is accepted and the properties are preserved on GET",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.2"},
+		},
 		Fn:          testPutNonstandardProps,
 	})
 	suite.Register(suite.Test{
@@ -208,6 +281,9 @@ func init() {
 		Description: "PROPFIND DAV:allprop on the principal does not include CARDDAV:principal-address",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§7.1.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-7.1.2"},
+		},
 		Fn:          testPrincipalAddressNotInAllprop,
 	})
 	suite.Register(suite.Test{
@@ -216,6 +292,9 @@ func init() {
 		Description: "addressbook-query with C:param-filter restricts results by vCard property parameter value",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.5.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.5.2"},
+		},
 		Fn:          testQueryParamFilter,
 	})
 	suite.Register(suite.Test{
@@ -224,6 +303,9 @@ func init() {
 		Description: "addressbook-query referencing an unsupported filter property is rejected with CARDDAV:supported-filter precondition",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.5.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.5.3"},
+		},
 		Fn:          testSupportedFilterPrecondition,
 	})
 	// §3 R-02
@@ -233,6 +315,9 @@ func init() {
 		Description: `OPTIONS on an address book collection includes "3" in the DAV response header (WebDAV Class 3)`,
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-3"},
+		},
 		Fn:          testDavClass3,
 	})
 	// §5.1 R-12
@@ -241,7 +326,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT an address object without a UID property is rejected with CARDDAV:valid-address-data precondition",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§5.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-5.1"},
+		},
 		Fn:          testPutMissingUID,
 	})
 	// §6.3.2.1 R-42
@@ -250,7 +339,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT to an existing address object URI with a different UID value is rejected with CARDDAV:no-uid-conflict precondition",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testPutUIDChange,
 	})
 	// §6.3.2.1 R-43 (SHOULD)
@@ -259,7 +352,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "CARDDAV:no-uid-conflict precondition error body includes a DAV:href identifying the conflicting resource",
 		Severity:    suite.Should,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testUIDConflictHref,
 	})
 	// §6.3.2.1 R-44
@@ -269,6 +366,9 @@ func init() {
 		Description: "COPY of an address book collection to a location inside another address book collection is rejected with CARDDAV:addressbook-collection-location-ok",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testCopyLocationOK,
 	})
 	suite.Register(suite.Test{
@@ -277,6 +377,9 @@ func init() {
 		Description: "MOVE of an address book collection to a location inside another address book collection is rejected with CARDDAV:addressbook-collection-location-ok",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
 		Fn:          testMoveLocationOK,
 	})
 	// §6.2.1 R-20, R-22 (SHOULD)
@@ -286,6 +389,9 @@ func init() {
 		Description: "PROPPATCH can set CARDDAV:addressbook-description on an address book collection (property SHOULD NOT be protected)",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.1"},
+		},
 		Fn:          testAddressbookDescriptionWritable,
 	})
 	suite.Register(suite.Test{
@@ -294,6 +400,9 @@ func init() {
 		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:addressbook-description",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.1"},
+		},
 		Fn:          testAddressbookDescriptionNotInAllprop,
 	})
 	// §6.2.2 R-23, R-27
@@ -303,6 +412,9 @@ func init() {
 		Description: "PROPPATCH attempting to set CARDDAV:supported-address-data is rejected with 403 (property is protected)",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.2"},
+		},
 		Fn:          testSupportedAddressDataProtected,
 	})
 	suite.Register(suite.Test{
@@ -311,6 +423,9 @@ func init() {
 		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:supported-address-data",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.2"},
+		},
 		Fn:          testSupportedAddressDataNotInAllprop,
 	})
 	// §6.2.3 R-28, R-31
@@ -320,6 +435,9 @@ func init() {
 		Description: "PROPPATCH attempting to set CARDDAV:max-resource-size is rejected with 403 (property is protected)",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.3"},
+		},
 		Fn:          testMaxResourceSizeProtected,
 	})
 	suite.Register(suite.Test{
@@ -328,6 +446,9 @@ func init() {
 		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:max-resource-size",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.3"},
+		},
 		Fn:          testMaxResourceSizeNotInAllprop,
 	})
 	// §8.3 R-71, §10.5.4 R-112 (SHOULD)
@@ -337,6 +458,9 @@ func init() {
 		Description: "addressbook-query text-match without a collation attribute uses i;unicode-casemap (case-insensitive) by default",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3"},
+		},
 		Fn:          testQueryDefaultCollation,
 	})
 	// §8.3 R-72
@@ -346,6 +470,9 @@ func init() {
 		Description: "addressbook-query with a wildcard collation identifier is rejected with CARDDAV:supported-collation precondition",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3"},
+		},
 		Fn:          testQueryWildcardCollation,
 	})
 	// §8.3.1 R-74, R-76
@@ -355,6 +482,9 @@ func init() {
 		Description: "PROPPATCH attempting to set CARDDAV:supported-collation-set is rejected with 403 (property is protected)",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3.1"},
+		},
 		Fn:          testSupportedCollationSetProtected,
 	})
 	suite.Register(suite.Test{
@@ -363,6 +493,9 @@ func init() {
 		Description: "PROPFIND DAV:allprop on an address book collection does not include CARDDAV:supported-collation-set",
 		Severity:    suite.Should,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.3.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.3.1"},
+		},
 		Fn:          testSupportedCollationSetNotInAllprop,
 	})
 	// §8.6 R-85
@@ -372,6 +505,9 @@ func init() {
 		Description: "addressbook-query requesting a non-existent WebDAV property returns 404 in DAV:propstat for that property",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.6", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.6"},
+		},
 		Fn:          testQueryNonexistentProp,
 	})
 	// §6.1 R-18 (resource-level)
@@ -381,6 +517,9 @@ func init() {
 		Description: `OPTIONS on an address object resource also returns "addressbook" in the DAV response header`,
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.1"},
+		},
 		Fn:          testOptionsAddressbookTokenResource,
 	})
 	// §10.4.2 R-107, R-108 — C:prop name matching in address-data retrieval
@@ -390,6 +529,9 @@ func init() {
 		Description: "addressbook-query C:address-data C:prop without group prefix returns properties with any or no group prefix",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.4.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.4.2"},
+		},
 		Fn:          testAddressDataPropNoGroupPrefix,
 	})
 	suite.Register(suite.Test{
@@ -398,6 +540,9 @@ func init() {
 		Description: "addressbook-query C:address-data C:prop with group prefix returns only properties with exactly that prefix",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.4.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.4.2"},
+		},
 		Fn:          testAddressDataPropGroupPrefix,
 	})
 	// §10.5.1 R-109, R-110 — prop-filter name matching
@@ -407,6 +552,9 @@ func init() {
 		Description: "addressbook-query prop-filter without group prefix matches cards with grouped or ungrouped instances of that property",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.5.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.5.1"},
+		},
 		Fn:          testQueryNoGroupPrefixFilter,
 	})
 	suite.Register(suite.Test{
@@ -415,6 +563,9 @@ func init() {
 		Description: "addressbook-query prop-filter with group prefix matches only cards with that exact group-prefix property",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.5.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.5.1"},
+		},
 		Fn:          testQueryGroupPrefixFilter,
 	})
 	// §13 R-120
@@ -424,6 +575,9 @@ func init() {
 		Description: "Unauthenticated GET on an address object resource is rejected with 401 or 403",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§13", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-13"},
+		},
 		Fn:          testUnauthenticatedGetDenied,
 	})
 	suite.Register(suite.Test{
@@ -432,6 +586,9 @@ func init() {
 		Description: "Unauthenticated PUT to an address book collection is rejected with 401 or 403",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§13", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-13"},
+		},
 		Fn:          testUnauthenticatedPutDenied,
 	})
 	suite.Register(suite.Test{
@@ -440,6 +597,9 @@ func init() {
 		Description: "Unauthenticated addressbook-query REPORT on an address book collection is rejected with 401 or 403",
 		Severity:    suite.Must,
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§13", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-13"},
+		},
 		Fn:          testUnauthenticatedReportDenied,
 	})
 	// §5.1 R-01
@@ -448,7 +608,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "PUT a vCard 3.0 returns 201 Created",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§5.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-5.1"},
+		},
 		Fn:          testPutV3,
 	})
 	// §5.1 R-01
@@ -457,7 +621,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "After PUT of vCard 3.0, default GET returns VERSION:4.0",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§5.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-5.1"},
+		},
 		Fn:          testStoredAsV4,
 	})
 	// §6.5.3
@@ -466,7 +634,11 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "GET with Accept: text/vcard; version=3.0 returns VERSION:3.0 after PUT of 3.0",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.5.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.5.3"},
+		},
 		Fn:          testGetAcceptV3,
 	})
 	// §6.5.3 / RFC 2426 §3.3.2
@@ -475,7 +647,12 @@ func init() {
 		Suite:       "rfc6352",
 		Description: "Email type is preserved correctly when serving vCard 4.0 content as 3.0",
 		Severity:    suite.Must,
+		Tags:        []string{"vcard"},
 		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.5.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.5.3"},
+			{RFC: "RFC 2426", Section: "§3.3.2", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.3.2"},
+		},
 		Fn:          testEmailRoundtrip,
 	})
 	// §6.5.3: Content negotiation for version=4.0.
