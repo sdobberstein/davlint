@@ -478,6 +478,45 @@ func init() {
 		MinPrincipals: 1,
 		Fn:          testEmailRoundtrip,
 	})
+	// §6.5.3: Content negotiation for version=4.0.
+	suite.Register(suite.Test{
+		ID:            "rfc6352.get-accept-v4",
+		Suite:         "rfc6352",
+		Description:   "GET with Accept: text/vcard; version=4.0 returns VERSION:4.0",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.5.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.5.3"},
+		},
+		Fn: testGetAcceptV4,
+	})
+	// §6.2.2: CARDDAV:supported-address-data MUST advertise supported vCard versions.
+	suite.Register(suite.Test{
+		ID:            "rfc6352.supported-address-data",
+		Suite:         "rfc6352",
+		Description:   "PROPFIND on an address book advertises CARDDAV:supported-address-data with version 3.0 and 4.0",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.2", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.2"},
+		},
+		Fn: testSupportedAddressData,
+	})
+	// §6.2.3: CARDDAV:max-resource-size enforcement — oversized resource MUST be rejected.
+	suite.Register(suite.Test{
+		ID:            "rfc6352.photo-size-limit",
+		Suite:         "rfc6352",
+		Description:   "PUT a vCard with an oversized inline PHOTO is rejected with 413",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.2.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.2.3"},
+		},
+		Fn: testPhotoSizeLimit,
+	})
 }
 
 // discoverHomeSet returns the addressbook-home-set URL for the primary client,
@@ -2456,4 +2495,92 @@ func testEmailRoundtrip(ctx context.Context, sess *suite.Session) error {
 		return fmt.Errorf("email type conversion to 3.0: %w", err)
 	}
 	return nil
+}
+
+// testGetAcceptV4 verifies RFC 6352 §6.5.3: GET with Accept: text/vcard; version=4.0
+// returns a body containing VERSION:4.0.
+func testGetAcceptV4(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	resp, err := c.GetWithAccept(ctx, contactURL, "text/vcard; version=4.0")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	return assert.BodyHas(resp.Body, "VERSION:4.0")
+}
+
+// testSupportedAddressData verifies RFC 6352 §6.2.2: PROPFIND on an address book
+// returns CARDDAV:supported-address-data advertising both vCard 3.0 and 4.0.
+func testSupportedAddressData(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.PropfindProps([][2]string{
+		{client.NScarddav, "supported-address-data"},
+	})
+	resp, err := c.Propfind(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	if err := assert.PropExists(ms, colURL, client.NScarddav, "supported-address-data"); err != nil {
+		return err
+	}
+	// Verify both versions are advertised in the property value.
+	if err := assert.BodyHas(resp.Body, `version="3.0"`); err != nil {
+		return fmt.Errorf("supported-address-data missing version 3.0: %w", err)
+	}
+	return assert.BodyHas(resp.Body, `version="4.0"`)
+}
+
+// testPhotoSizeLimit verifies RFC 6352 §6.2.3: a PUT that exceeds the server's
+// CARDDAV:max-resource-size limit MUST be rejected with 413 Request Entity Too Large.
+func testPhotoSizeLimit(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := putContact(ctx, c, colURL+"large.vcf", []byte(fixtures.LargePhotoV4()))
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 413)
 }

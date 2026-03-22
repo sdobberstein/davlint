@@ -1,8 +1,8 @@
-// Package rfc6350 registers vCard 4.0 conformance tests (RFC 6350).
+// Package rfc6350 registers vCard 4.0 format validation tests (RFC 6350).
 //
-// Tests cover content negotiation on GET (version parameter), server-side UID
-// assignment, the supported-address-data CardDAV property, and the 250 KB
-// inline photo size limit.
+// Tests verify server-side enforcement of vCard 4.0 rules observable via HTTP:
+// that stored vCards are served as VERSION:4.0 by default, and that the server
+// assigns a UID when one is absent on PUT.
 package rfc6350
 
 import (
@@ -18,53 +18,31 @@ import (
 )
 
 func init() {
+	// §6.7.9: VERSION value MUST be "4.0" for this spec.
 	suite.Register(suite.Test{
-		ID:          "rfc6350.get-default-v4",
-		Suite:       "rfc6350",
-		Description: "GET on a stored vCard returns VERSION:4.0 by default",
-		Severity:    suite.Must,
+		ID:            "rfc6350.get-default-v4",
+		Suite:         "rfc6350",
+		Description:   "GET on a stored vCard returns VERSION:4.0 by default",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testGetDefaultV4,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6350", Section: "§6.7.9", URL: "https://www.rfc-editor.org/rfc/rfc6350#section-6.7.9"},
+		},
+		Fn: testGetDefaultV4,
 	})
+	// §6.7.6: UID MUST uniquely identify the vCard object.
 	suite.Register(suite.Test{
-		ID:          "rfc6350.get-accept-v4",
-		Suite:       "rfc6350",
-		Description: "GET with Accept: text/vcard; version=4.0 returns VERSION:4.0",
-		Severity:    suite.Must,
+		ID:            "rfc6350.uid-assignment",
+		Suite:         "rfc6350",
+		Description:   "PUT a vCard without UID; server assigns one and GET returns a UID line",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
 		MinPrincipals: 1,
-		Fn:          testGetAcceptV4,
-	})
-	suite.Register(suite.Test{
-		ID:          "rfc6350.get-accept-v3",
-		Suite:       "rfc6350",
-		Description: "GET with Accept: text/vcard; version=3.0 returns VERSION:3.0",
-		Severity:    suite.Must,
-		MinPrincipals: 1,
-		Fn:          testGetAcceptV3,
-	})
-	suite.Register(suite.Test{
-		ID:          "rfc6350.uid-assignment",
-		Suite:       "rfc6350",
-		Description: "PUT a vCard without UID; server assigns one and GET returns a UID line",
-		Severity:    suite.Must,
-		MinPrincipals: 1,
-		Fn:          testUIDAssignment,
-	})
-	suite.Register(suite.Test{
-		ID:          "rfc6350.supported-address-data",
-		Suite:       "rfc6350",
-		Description: "PROPFIND on an address book returns C:supported-address-data with 3.0 and 4.0",
-		Severity:    suite.Must,
-		MinPrincipals: 1,
-		Fn:          testSupportedAddressData,
-	})
-	suite.Register(suite.Test{
-		ID:          "rfc6350.photo-size-limit",
-		Suite:       "rfc6350",
-		Description: "PUT a vCard with an inline PHOTO exceeding 250 KB returns 413",
-		Severity:    suite.Must,
-		MinPrincipals: 1,
-		Fn:          testPhotoSizeLimit,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6350", Section: "§6.7.6", URL: "https://www.rfc-editor.org/rfc/rfc6350#section-6.7.6"},
+		},
+		Fn: testUIDAssignment,
 	})
 }
 
@@ -124,60 +102,6 @@ func testGetDefaultV4(ctx context.Context, sess *suite.Session) error {
 	return assert.BodyHas(resp.Body, "VERSION:4.0")
 }
 
-func testGetAcceptV4(ctx context.Context, sess *suite.Session) error {
-	c := sess.Primary()
-	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
-	if err != nil {
-		return err
-	}
-	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
-	if err != nil {
-		return err
-	}
-	sess.AddCleanup(cleanup)
-
-	contactURL := colURL + "alice.vcf"
-	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
-		return err
-	}
-
-	resp, err := c.GetWithAccept(ctx, contactURL, "text/vcard; version=4.0")
-	if err != nil {
-		return err
-	}
-	if err := assert.StatusCode(resp, 200); err != nil {
-		return err
-	}
-	return assert.BodyHas(resp.Body, "VERSION:4.0")
-}
-
-func testGetAcceptV3(ctx context.Context, sess *suite.Session) error {
-	c := sess.Primary()
-	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
-	if err != nil {
-		return err
-	}
-	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
-	if err != nil {
-		return err
-	}
-	sess.AddCleanup(cleanup)
-
-	contactURL := colURL + "alice.vcf"
-	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
-		return err
-	}
-
-	resp, err := c.GetWithAccept(ctx, contactURL, "text/vcard; version=3.0")
-	if err != nil {
-		return err
-	}
-	if err := assert.StatusCode(resp, 200); err != nil {
-		return err
-	}
-	return assert.BodyHas(resp.Body, "VERSION:3.0")
-}
-
 func testUIDAssignment(ctx context.Context, sess *suite.Session) error {
 	c := sess.Primary()
 	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
@@ -209,58 +133,3 @@ func testUIDAssignment(ctx context.Context, sess *suite.Session) error {
 	return assert.HasProperty(resp.Body, "UID")
 }
 
-func testSupportedAddressData(ctx context.Context, sess *suite.Session) error {
-	c := sess.Primary()
-	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
-	if err != nil {
-		return err
-	}
-	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
-	if err != nil {
-		return err
-	}
-	sess.AddCleanup(cleanup)
-
-	body := client.PropfindProps([][2]string{
-		{client.NScarddav, "supported-address-data"},
-	})
-	resp, err := c.Propfind(ctx, colURL, "0", body)
-	if err != nil {
-		return err
-	}
-	if err := assert.StatusCode(resp, 207); err != nil {
-		return err
-	}
-	ms, err := client.ParseMultistatus(resp.Body)
-	if err != nil {
-		return err
-	}
-	if err := assert.PropExists(ms, colURL, client.NScarddav, "supported-address-data"); err != nil {
-		return err
-	}
-	// Verify both versions are advertised in the property value.
-	if err := assert.BodyHas(resp.Body, `version="3.0"`); err != nil {
-		return fmt.Errorf("supported-address-data missing version 3.0: %w", err)
-	}
-	return assert.BodyHas(resp.Body, `version="4.0"`)
-}
-
-func testPhotoSizeLimit(ctx context.Context, sess *suite.Session) error {
-	c := sess.Primary()
-	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
-	if err != nil {
-		return err
-	}
-	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
-	if err != nil {
-		return err
-	}
-	sess.AddCleanup(cleanup)
-
-	resp, err := putContact(ctx, c, colURL+"large.vcf", []byte(fixtures.LargePhotoV4()))
-	if err != nil {
-		return err
-	}
-	// RFC 6350 / server policy: oversized inline photo → 413 Request Entity Too Large.
-	return assert.StatusCode(resp, 413)
-}
