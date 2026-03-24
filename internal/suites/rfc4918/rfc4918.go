@@ -193,6 +193,105 @@ func init() {
 		},
 		Fn: testMove,
 	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.propfind-propname",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND propname returns 207 with property names for a resource",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.1"},
+		},
+		Fn: testPropfindPropname,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.proppatch-remove",
+		Suite:         "rfc4918",
+		Description:   "PROPPATCH remove deletes a dead property; subsequent PROPFIND returns 404 propstat",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.2", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.2"},
+		},
+		Fn: testProppatchRemove,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.put-update",
+		Suite:         "rfc4918",
+		Description:   "PUT to an existing resource returns 204 No Content",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.7.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.7.1"},
+		},
+		Fn: testPutUpdate,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.copy-overwrite-t",
+		Suite:         "rfc4918",
+		Description:   "COPY with Overwrite:T to an existing destination returns 204",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.8.3", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.8.3"},
+		},
+		Fn: testCopyOverwriteT,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.copy-overwrite-f",
+		Suite:         "rfc4918",
+		Description:   "COPY with Overwrite:F to an existing destination returns 412",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.8.3", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.8.3"},
+		},
+		Fn: testCopyOverwriteF,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.move-overwrite-t",
+		Suite:         "rfc4918",
+		Description:   "MOVE with Overwrite:T to an existing destination returns 204; source is deleted",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.9", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.9"},
+		},
+		Fn: testMoveOverwriteT,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.delete-collection",
+		Suite:         "rfc4918",
+		Description:   "DELETE on a non-empty collection returns 204; subsequent GET returns 404",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.6.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.6.1"},
+		},
+		Fn: testDeleteCollection,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.mkcol-with-body",
+		Suite:         "rfc4918",
+		Description:   "MKCOL with an unsupported body type returns 415 Unsupported Media Type",
+		Severity:      suite.Should,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.3", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.3"},
+		},
+		Fn: testMkcolWithBody,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc4918.delete-nonexistent",
+		Suite:         "rfc4918",
+		Description:   "DELETE on a nonexistent resource returns 404",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.6"},
+		},
+		Fn: testDeleteNonexistent,
+	})
 }
 
 // discoverHomeSet returns the addressbook-home-set URL for the primary client,
@@ -746,4 +845,294 @@ func testMove(ctx context.Context, sess *suite.Session) error {
 		return err
 	}
 	return assert.StatusCode(dstGet, 200)
+}
+
+func testPropfindPropname(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Propfind(ctx, contactURL, "0", client.PropfindPropname())
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	// propname response must include getetag — a live property every vCard resource must expose.
+	return assert.PropExists(ms, contactURL, client.NSdav, "getetag")
+}
+
+func testProppatchRemove(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	const (
+		deadNS    = "http://davlint.invalid/ns/"
+		deadLocal = "remove-test-prop"
+		deadValue = "davlint-remove-test"
+	)
+
+	// Set the property first.
+	patchBody := proppatchSetXML(deadNS, deadLocal, deadValue)
+	resp, err := c.Proppatch(ctx, contactURL, patchBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPPATCH set: %w", err)
+	}
+
+	// Remove it.
+	removeBody := client.ProppatchRemove([][2]string{{deadNS, deadLocal}})
+	resp, err = c.Proppatch(ctx, contactURL, removeBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPPATCH remove: %w", err)
+	}
+
+	// Verify the property is gone: PROPFIND must return it in a 404 propstat.
+	pfBody := client.PropfindProps([][2]string{{deadNS, deadLocal}})
+	resp, err = c.Propfind(ctx, contactURL, "0", pfBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPFIND after remove: %w", err)
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	return assert.PropNotFound(ms, contactURL, deadNS, deadLocal)
+}
+
+func testPutUpdate(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	// PUT again to the same URL must return 204 No Content.
+	resp, err := c.Put(ctx, contactURL, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 204)
+}
+
+func testCopyOverwriteT(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	srcURL := colURL + "copy-ow-src.vcf"
+	dstURL := colURL + "copy-ow-dst.vcf"
+
+	for _, u := range []string{srcURL, dstURL} {
+		putResp, err := c.Put(ctx, u, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+		if err != nil {
+			return err
+		}
+		if putResp.StatusCode != 201 && putResp.StatusCode != 204 {
+			return fmt.Errorf("PUT %s: got %d, want 201 or 204", u, putResp.StatusCode)
+		}
+	}
+
+	// RFC 4918 §9.8.5: 204 when destination already existed and was replaced.
+	copyResp, err := c.Copy(ctx, srcURL, dstURL, true)
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(copyResp, 204)
+}
+
+func testCopyOverwriteF(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	srcURL := colURL + "copy-nw-src.vcf"
+	dstURL := colURL + "copy-nw-dst.vcf"
+
+	for _, u := range []string{srcURL, dstURL} {
+		putResp, err := c.Put(ctx, u, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+		if err != nil {
+			return err
+		}
+		if putResp.StatusCode != 201 && putResp.StatusCode != 204 {
+			return fmt.Errorf("PUT %s: got %d, want 201 or 204", u, putResp.StatusCode)
+		}
+	}
+
+	// RFC 4918 §9.8.3: 412 Precondition Failed when Overwrite:F and destination exists.
+	copyResp, err := c.Copy(ctx, srcURL, dstURL, false)
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(copyResp, 412)
+}
+
+func testMoveOverwriteT(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	srcURL := colURL + "move-ow-src.vcf"
+	dstURL := colURL + "move-ow-dst.vcf"
+
+	for _, u := range []string{srcURL, dstURL} {
+		putResp, err := c.Put(ctx, u, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+		if err != nil {
+			return err
+		}
+		if putResp.StatusCode != 201 && putResp.StatusCode != 204 {
+			return fmt.Errorf("PUT %s: got %d, want 201 or 204", u, putResp.StatusCode)
+		}
+	}
+
+	// RFC 4918 §9.9: 204 when destination already existed and was replaced.
+	moveResp, err := c.Move(ctx, srcURL, dstURL, true)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(moveResp, 204); err != nil {
+		return err
+	}
+
+	// Source must be gone.
+	srcGet, err := c.Get(ctx, srcURL)
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(srcGet, 404)
+}
+
+func testDeleteCollection(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	// Register cleanup in case the DELETE fails midway.
+	sess.AddCleanup(cleanup)
+
+	// Put a contact inside so the collection is non-empty.
+	if _, err := putTestContact(ctx, c, colURL); err != nil {
+		return err
+	}
+
+	resp, err := c.Delete(ctx, colURL, "")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 204); err != nil {
+		return err
+	}
+
+	// Subsequent GET on the collection must return 404.
+	getResp, err := c.Get(ctx, colURL)
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(getResp, 404)
+}
+
+func testMkcolWithBody(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	// Generate a URL that doesn't exist — no cleanup needed since MKCOL should fail.
+	colURL := fmt.Sprintf("%sdavlint-rfc4918-%08x/", homeSet, rand.Uint32()) // #nosec G404
+
+	// RFC 4918 §9.3: server SHOULD return 415 when MKCOL body has unsupported media type.
+	resp, err := c.MkcolRaw(ctx, colURL, "text/plain", []byte("unexpected body"))
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 415)
+}
+
+func testDeleteNonexistent(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	ghostURL := fmt.Sprintf("%sdavlint-ghost-%08x.vcf", homeSet, rand.Uint32()) // #nosec G404
+
+	resp, err := c.Delete(ctx, ghostURL, "")
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 404)
 }

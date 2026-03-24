@@ -288,6 +288,28 @@ func PropfindAllprop() []byte {
 		`<D:propfind xmlns:D="DAV:"><D:allprop/></D:propfind>`)
 }
 
+// PropfindPropname returns a PROPFIND body requesting only property names
+// (RFC 4918 §9.1 — servers MUST support the propname variant).
+func PropfindPropname() []byte {
+	return []byte(xml.Header +
+		`<D:propfind xmlns:D="DAV:"><D:propname/></D:propfind>`)
+}
+
+// ProppatchRemove returns a PROPPATCH request body that removes the named properties.
+// props is a list of [namespace, localname] pairs.
+func ProppatchRemove(props [][2]string) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`)
+	b.WriteString(`<D:remove><D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElem(p[0], p[1]))
+	}
+	b.WriteString(`</D:prop></D:remove>`)
+	b.WriteString(`</D:propertyupdate>`)
+	return []byte(b.String())
+}
+
 // PropfindProps returns a PROPFIND body requesting the named properties.
 // props is a slice of [namespace, localname] pairs.
 func PropfindProps(props [][2]string) []byte {
