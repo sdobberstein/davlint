@@ -268,6 +268,19 @@ func init() {
 		},
 		Fn: testKindOrgAccepted,
 	})
+	// §6.7.9: KIND:location MUST be accepted.
+	suite.Register(suite.Test{
+		ID:            "rfc6350.kind-location-accepted",
+		Suite:         "rfc6350",
+		Description:   "PUT a vCard 4.0 with KIND:location is accepted (RFC 6350 §6.7.9 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6350", Section: "§6.7.9", URL: "https://www.rfc-editor.org/rfc/rfc6350#section-6.7.9"},
+		},
+		Fn: testKindLocationAccepted,
+	})
 	// §6.3.1: Absent ADR components MUST retain their SEMI-COLON separators.
 	suite.Register(suite.Test{
 		ID:            "rfc6350.adr-sparse-roundtrip",
@@ -489,6 +502,15 @@ const vcardKindOrg = "BEGIN:VCARD\r\n" +
 	"UID:urn:uuid:6000000c-0000-0000-0000-000000000001\r\n" +
 	"FN:Acme Corporation\r\n" +
 	"KIND:org\r\n" +
+	"END:VCARD\r\n"
+
+// vcardKindLocation is a valid vCard 4.0 with KIND:location, which MUST be
+// accepted per RFC 6350 §6.7.9.
+const vcardKindLocation = "BEGIN:VCARD\r\n" +
+	"VERSION:4.0\r\n" +
+	"UID:urn:uuid:6000000d-0000-0000-0000-000000000001\r\n" +
+	"FN:Conference Room A\r\n" +
+	"KIND:location\r\n" +
 	"END:VCARD\r\n"
 
 // vcardSparseADR is a valid vCard 4.0 with a sparse ADR where PO Box and
@@ -913,6 +935,28 @@ func testMemberWithoutKindGroup(ctx context.Context, sess *suite.Session) error 
 
 func testKindUnknownRejected(ctx context.Context, sess *suite.Session) error {
 	return putInvalidVCard(ctx, sess, []byte(vcardKindUnknown), "PUT vCard 4.0 with KIND:unknown")
+}
+
+func testKindLocationAccepted(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := putContact(ctx, c, colURL+"kind-location.vcf", []byte(vcardKindLocation))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 && resp.StatusCode != 204 {
+		return fmt.Errorf("PUT vCard 4.0 with KIND:location: got %d, want 201 or 204", resp.StatusCode)
+	}
+	return nil
 }
 
 func testKindOrgAccepted(ctx context.Context, sess *suite.Session) error {
