@@ -245,6 +245,32 @@ func (c *Client) ReportNoAuth(ctx context.Context, path string, body []byte) (*R
 	return c.doNoAuth(ctx, "REPORT", path, h, body)
 }
 
+// CopyNoOverwrite sends a COPY request without an Overwrite header.
+// Per RFC 4918 §10.6, the default when the header is absent is "T".
+func (c *Client) CopyNoOverwrite(ctx context.Context, src, dst string) (*Response, error) {
+	h := http.Header{"Destination": {c.resolve(dst)}}
+	return c.do(ctx, "COPY", src, h, nil)
+}
+
+// MoveNoOverwrite sends a MOVE request without an Overwrite header.
+// Per RFC 4918 §10.6, the default when the header is absent is "T".
+func (c *Client) MoveNoOverwrite(ctx context.Context, src, dst string) (*Response, error) {
+	h := http.Header{"Destination": {c.resolve(dst)}}
+	return c.do(ctx, "MOVE", src, h, nil)
+}
+
+// CopyNoDestination sends a COPY request without a Destination header.
+// Per RFC 4918 §9.8, Destination is required; absence should result in 400.
+func (c *Client) CopyNoDestination(ctx context.Context, src string) (*Response, error) {
+	return c.do(ctx, "COPY", src, nil, nil)
+}
+
+// MoveNoDestination sends a MOVE request without a Destination header.
+// Per RFC 4918 §9.9, Destination is required; absence should result in 400.
+func (c *Client) MoveNoDestination(ctx context.Context, src string) (*Response, error) {
+	return c.do(ctx, "MOVE", src, nil, nil)
+}
+
 // PropfindWithIf sends a PROPFIND request with an If state-token header.
 // token is wrapped as required by RFC 4918 §10.4: If: (<token>).
 // Use this to test that a server honours DAV:sync-token values as state tokens

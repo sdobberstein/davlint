@@ -13,7 +13,9 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/sdobberstein/davlint/pkg/assert"
 	"github.com/sdobberstein/davlint/pkg/client"
@@ -291,6 +293,200 @@ func init() {
 			{RFC: "RFC 4918", Section: "§9.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.6"},
 		},
 		Fn: testDeleteNonexistent,
+	})
+	// §9.2: PROPPATCH on a protected live property MUST return 403 in the propstat.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.proppatch-protected",
+		Suite:         "rfc4918",
+		Description:   "PROPPATCH set on DAV:getetag (protected) returns 207 with 403 in propstat (RFC 4918 §9.2 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.2", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.2"},
+		},
+		Fn: testProppatchProtected,
+	})
+	// §9.2: PROPPATCH is atomic — if any property fails, none are applied.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.proppatch-atomicity",
+		Suite:         "rfc4918",
+		Description:   "PROPPATCH with one valid and one protected property is fully rolled back (RFC 4918 §9.2 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.2", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.2"},
+		},
+		Fn: testProppatchAtomicity,
+	})
+	// §10.6: Absent Overwrite header defaults to T — COPY to existing destination succeeds.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.copy-overwrite-default",
+		Suite:         "rfc4918",
+		Description:   "COPY without Overwrite header defaults to T and overwrites existing destination (RFC 4918 §10.6 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§10.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-10.6"},
+		},
+		Fn: testCopyOverwriteDefault,
+	})
+	// §9.8.2: Dead properties MUST be copied to the destination.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.copy-dead-props",
+		Suite:         "rfc4918",
+		Description:   "COPY preserves dead properties at the destination (RFC 4918 §9.8.2 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.8.2", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.8.2"},
+		},
+		Fn: testCopyDeadProps,
+	})
+	// §9.9 / §9.8.3: MOVE with Overwrite:F to an existing destination MUST return 412.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.move-overwrite-f",
+		Suite:         "rfc4918",
+		Description:   "MOVE with Overwrite:F to an existing destination returns 412 (RFC 4918 §9.9 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.9", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.9"},
+		},
+		Fn: testMoveOverwriteF,
+	})
+	// §10.6: Absent Overwrite header defaults to T — MOVE to existing destination succeeds.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.move-overwrite-default",
+		Suite:         "rfc4918",
+		Description:   "MOVE without Overwrite header defaults to T and overwrites existing destination (RFC 4918 §10.6 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§10.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-10.6"},
+		},
+		Fn: testMoveOverwriteDefault,
+	})
+	// §9.3.1: MKCOL with a non-existent intermediate parent MUST return 409.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.mkcol-missing-parent",
+		Suite:         "rfc4918",
+		Description:   "MKCOL with a non-existent intermediate parent returns 409 Conflict (RFC 4918 §9.3.1 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.3.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.3.1"},
+		},
+		Fn: testMkcolMissingParent,
+	})
+	// §9.7: PUT to a collection URL MUST return 405.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.put-to-collection",
+		Suite:         "rfc4918",
+		Description:   "PUT to a collection URL returns 405 Method Not Allowed (RFC 4918 §9.7 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.7", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.7"},
+		},
+		Fn: testPutToCollection,
+	})
+	// §9.7.1: PUT with a non-existent intermediate parent MUST return 409.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.put-missing-parent",
+		Suite:         "rfc4918",
+		Description:   "PUT to a URL with a non-existent parent collection returns 409 Conflict (RFC 4918 §9.7.1 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.7.1", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.7.1"},
+		},
+		Fn: testPutMissingParent,
+	})
+	// §9.8: Destination header is required for COPY; absence MUST result in 400.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.copy-no-destination",
+		Suite:         "rfc4918",
+		Description:   "COPY without a Destination header returns 400 Bad Request (RFC 4918 §9.8 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.8", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.8"},
+		},
+		Fn: testCopyNoDestination,
+	})
+	// §9.9: Destination header is required for MOVE; absence MUST result in 400.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.move-no-destination",
+		Suite:         "rfc4918",
+		Description:   "MOVE without a Destination header returns 400 Bad Request (RFC 4918 §9.9 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§9.9", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-9.9"},
+		},
+		Fn: testMoveNoDestination,
+	})
+	// §10.4: If-Match on PUT — correct ETag succeeds; wrong ETag returns 412.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.put-if-match",
+		Suite:         "rfc4918",
+		Description:   "PUT with If-Match: matching ETag returns 204; mismatched ETag returns 412 (RFC 4918 §10.4 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§10.4", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-10.4"},
+		},
+		Fn: testPutIfMatch,
+	})
+	// §10.4.2: If-None-Match: * on PUT to an existing resource MUST return 412.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.put-if-none-match-star",
+		Suite:         "rfc4918",
+		Description:   "PUT with If-None-Match: * to an existing resource returns 412 (RFC 4918 §10.4.2 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§10.4.2", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-10.4.2"},
+		},
+		Fn: testPutIfNoneMatchStar,
+	})
+	// §15.9: DAV:resourcetype on a collection MUST contain <DAV:collection/>.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.resourcetype-collection",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND DAV:resourcetype on a collection contains <DAV:collection/> (RFC 4918 §15.9 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§15.9", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-15.9"},
+		},
+		Fn: testResourcetypeCollection,
+	})
+	// §15.6: DAV:getetag in PROPFIND MUST match the ETag returned by GET.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.getetag-matches-header",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND DAV:getetag matches the ETag header from GET on the same resource (RFC 4918 §15.6 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§15.6", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-15.6"},
+		},
+		Fn: testGetetagMatchesHeader,
+	})
+	// §15.7: DAV:getlastmodified MUST be in RFC 1123 date format.
+	suite.Register(suite.Test{
+		ID:            "rfc4918.getlastmodified-format",
+		Suite:         "rfc4918",
+		Description:   "PROPFIND DAV:getlastmodified is a valid RFC 1123 date (RFC 4918 §15.7 MUST)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 4918", Section: "§15.7", URL: "https://www.rfc-editor.org/rfc/rfc4918#section-15.7"},
+		},
+		Fn: testGetlastmodifiedFormat,
 	})
 }
 
@@ -1135,4 +1331,592 @@ func testDeleteNonexistent(ctx context.Context, sess *suite.Session) error {
 		return err
 	}
 	return assert.StatusCode(resp, 404)
+}
+
+// proppatchSetProtected returns a PROPPATCH body that attempts to set
+// DAV:getetag — a protected live property that servers MUST reject.
+func proppatchSetProtected() []byte {
+	return []byte(`<?xml version="1.0" encoding="utf-8"?>` +
+		`<D:propertyupdate xmlns:D="DAV:">` +
+		`<D:set><D:prop>` +
+		`<D:getetag>malicious-value</D:getetag>` +
+		`</D:prop></D:set>` +
+		`</D:propertyupdate>`)
+}
+
+// proppatchSetWithProtected returns a PROPPATCH body that sets a dead property
+// and DAV:getetag (protected) in a single atomic request. Used to test that
+// atomicity rolls back the dead property when the protected one is rejected.
+func proppatchSetWithProtected(deadNS, deadLocal, deadValue string) []byte {
+	return []byte(fmt.Sprintf(
+		`<?xml version="1.0" encoding="utf-8"?>`+
+			`<D:propertyupdate xmlns:D="DAV:" xmlns:X=%q>`+
+			`<D:set><D:prop>`+
+			`<X:%s>%s</X:%s>`+
+			`<D:getetag>malicious-value</D:getetag>`+
+			`</D:prop></D:set>`+
+			`</D:propertyupdate>`,
+		deadNS, deadLocal, deadValue, deadLocal,
+	))
+}
+
+func testProppatchProtected(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Proppatch(ctx, contactURL, proppatchSetProtected())
+	if err != nil {
+		return err
+	}
+	// Server MUST return 207; the getetag propstat MUST be 403.
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPPATCH protected: %w", err)
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	return assert.PropForbidden(ms, contactURL, client.NSdav, "getetag")
+}
+
+func testProppatchAtomicity(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	const (
+		deadNS    = "http://davlint.invalid/ns/"
+		deadLocal = "atomic-test-prop"
+		deadValue = "should-not-be-set"
+	)
+
+	// PROPPATCH with a valid dead property and a protected property in one request.
+	resp, err := c.Proppatch(ctx, contactURL, proppatchSetWithProtected(deadNS, deadLocal, deadValue))
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPPATCH atomicity (combined): %w", err)
+	}
+
+	// The dead property must NOT have been set — the whole batch is rolled back.
+	pfBody := client.PropfindProps([][2]string{{deadNS, deadLocal}})
+	resp, err = c.Propfind(ctx, contactURL, "0", pfBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPFIND after atomic rollback: %w", err)
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	return assert.PropNotFound(ms, contactURL, deadNS, deadLocal)
+}
+
+func testCopyOverwriteDefault(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	srcURL := colURL + "cow-src.vcf"
+	dstURL := colURL + "cow-dst.vcf"
+
+	for _, u := range []string{srcURL, dstURL} {
+		putResp, err := c.Put(ctx, u, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+		if err != nil {
+			return err
+		}
+		if putResp.StatusCode != 201 && putResp.StatusCode != 204 {
+			return fmt.Errorf("PUT %s: got %d, want 201 or 204", u, putResp.StatusCode)
+		}
+	}
+
+	// COPY without Overwrite header — default is T, so existing destination must be overwritten (204).
+	copyResp, err := c.CopyNoOverwrite(ctx, srcURL, dstURL)
+	if err != nil {
+		return err
+	}
+	// 204 when destination existed and was replaced; 201 would indicate the server
+	// treated the absent header as F and still succeeded (unusual but check 2xx at minimum).
+	if copyResp.StatusCode == 412 {
+		return fmt.Errorf("COPY without Overwrite header: got 412 — server treated absent header as F instead of default T (RFC 4918 §10.6)")
+	}
+	if copyResp.StatusCode < 200 || copyResp.StatusCode >= 300 {
+		return fmt.Errorf("COPY without Overwrite header: got %d, want 2xx", copyResp.StatusCode)
+	}
+	return nil
+}
+
+func testCopyDeadProps(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	srcURL := colURL + "cdp-src.vcf"
+	dstURL := colURL + "cdp-dst.vcf"
+
+	putResp, err := c.Put(ctx, srcURL, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	if putResp.StatusCode != 201 && putResp.StatusCode != 204 {
+		return fmt.Errorf("PUT src: got %d, want 201 or 204", putResp.StatusCode)
+	}
+
+	const (
+		deadNS    = "http://davlint.invalid/ns/"
+		deadLocal = "copy-prop"
+		deadValue = "copy-prop-value"
+	)
+
+	patchBody := proppatchSetXML(deadNS, deadLocal, deadValue)
+	resp, err := c.Proppatch(ctx, srcURL, patchBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPPATCH set dead prop on src: %w", err)
+	}
+
+	copyResp, err := c.Copy(ctx, srcURL, dstURL, true)
+	if err != nil {
+		return err
+	}
+	if copyResp.StatusCode != 201 && copyResp.StatusCode != 204 {
+		return fmt.Errorf("COPY: got %d, want 201 or 204", copyResp.StatusCode)
+	}
+
+	// Dead property must be present on the destination.
+	pfBody := client.PropfindProps([][2]string{{deadNS, deadLocal}})
+	resp, err = c.Propfind(ctx, dstURL, "0", pfBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return fmt.Errorf("PROPFIND dst after COPY: %w", err)
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	return assert.PropExists(ms, dstURL, deadNS, deadLocal)
+}
+
+func testMoveOverwriteF(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	srcURL := colURL + "mof-src.vcf"
+	dstURL := colURL + "mof-dst.vcf"
+
+	for _, u := range []string{srcURL, dstURL} {
+		putResp, err := c.Put(ctx, u, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+		if err != nil {
+			return err
+		}
+		if putResp.StatusCode != 201 && putResp.StatusCode != 204 {
+			return fmt.Errorf("PUT %s: got %d, want 201 or 204", u, putResp.StatusCode)
+		}
+	}
+
+	moveResp, err := c.Move(ctx, srcURL, dstURL, false)
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(moveResp, 412)
+}
+
+func testMoveOverwriteDefault(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	srcURL := colURL + "mod-src.vcf"
+	dstURL := colURL + "mod-dst.vcf"
+
+	for _, u := range []string{srcURL, dstURL} {
+		putResp, err := c.Put(ctx, u, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+		if err != nil {
+			return err
+		}
+		if putResp.StatusCode != 201 && putResp.StatusCode != 204 {
+			return fmt.Errorf("PUT %s: got %d, want 201 or 204", u, putResp.StatusCode)
+		}
+	}
+
+	// MOVE without Overwrite header — default is T, so existing destination must be overwritten.
+	moveResp, err := c.MoveNoOverwrite(ctx, srcURL, dstURL)
+	if err != nil {
+		return err
+	}
+	if moveResp.StatusCode == 412 {
+		return fmt.Errorf("MOVE without Overwrite header: got 412 — server treated absent header as F instead of default T (RFC 4918 §10.6)")
+	}
+	if moveResp.StatusCode < 200 || moveResp.StatusCode >= 300 {
+		return fmt.Errorf("MOVE without Overwrite header: got %d, want 2xx", moveResp.StatusCode)
+	}
+	return nil
+}
+
+func testMkcolMissingParent(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	// URL whose intermediate parent does not exist.
+	missingParent := fmt.Sprintf("%sdavlint-noparent-%08x/", homeSet, rand.Uint32()) // #nosec G404
+	deepURL := missingParent + "child/"
+
+	resp, err := c.Mkcol(ctx, deepURL, nil)
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 409)
+}
+
+func testPutToCollection(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	// PUT directly to the collection URL (ends with /) must be rejected with 405.
+	resp, err := c.Put(ctx, colURL, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 405)
+}
+
+func testPutMissingParent(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	// URL whose parent collection does not exist.
+	missingParent := fmt.Sprintf("%sdavlint-noparent-%08x/", homeSet, rand.Uint32()) // #nosec G404
+	resourceURL := missingParent + "child.vcf"
+
+	resp, err := c.Put(ctx, resourceURL, "text/vcard; charset=utf-8", []byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 400 || resp.StatusCode >= 500 {
+		return fmt.Errorf("PUT with missing parent: got %d, want 4xx", resp.StatusCode)
+	}
+	return nil
+}
+
+func testCopyNoDestination(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.CopyNoDestination(ctx, contactURL)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 400 || resp.StatusCode >= 500 {
+		return fmt.Errorf("COPY without Destination: got %d, want 4xx", resp.StatusCode)
+	}
+	return nil
+}
+
+func testMoveNoDestination(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.MoveNoDestination(ctx, contactURL)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 400 || resp.StatusCode >= 500 {
+		return fmt.Errorf("MOVE without Destination: got %d, want 4xx", resp.StatusCode)
+	}
+	return nil
+}
+
+func testPutIfMatch(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	getResp, err := c.Get(ctx, contactURL)
+	if err != nil {
+		return err
+	}
+	etag := getResp.Header.Get("ETag")
+	if etag == "" {
+		return fmt.Errorf("GET did not return ETag header")
+	}
+
+	// PUT with mismatched If-Match must return 412.
+	mismatchResp, err := c.PutConditional(ctx, contactURL, "text/vcard; charset=utf-8",
+		http.Header{"If-Match": {`"davlint-stale-etag"`}},
+		[]byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(mismatchResp, 412); err != nil {
+		return fmt.Errorf("PUT If-Match mismatch: %w", err)
+	}
+
+	// PUT with correct If-Match must succeed.
+	matchResp, err := c.PutConditional(ctx, contactURL, "text/vcard; charset=utf-8",
+		http.Header{"If-Match": {etag}},
+		[]byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	if matchResp.StatusCode != 200 && matchResp.StatusCode != 204 {
+		return fmt.Errorf("PUT If-Match match: got %d, want 200 or 204", matchResp.StatusCode)
+	}
+	return nil
+}
+
+func testPutIfNoneMatchStar(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	// PUT with If-None-Match: * to an existing resource must return 412.
+	resp, err := c.PutConditional(ctx, contactURL, "text/vcard; charset=utf-8",
+		http.Header{"If-None-Match": {"*"}},
+		[]byte(fixtures.AliceV4))
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 412)
+}
+
+func testResourcetypeCollection(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.PropfindProps([][2]string{{client.NSdav, "resourcetype"}})
+	resp, err := c.Propfind(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	return assert.ResourceTypeContains(ms, colURL, client.NSdav, "collection")
+}
+
+func testGetetagMatchesHeader(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	getResp, err := c.Get(ctx, contactURL)
+	if err != nil {
+		return err
+	}
+	headerETag := getResp.Header.Get("ETag")
+	if headerETag == "" {
+		return fmt.Errorf("GET did not return ETag header")
+	}
+
+	body := client.PropfindProps([][2]string{{client.NSdav, "getetag"}})
+	resp, err := c.Propfind(ctx, contactURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	propETag, err := assert.PropTextValue(ms, contactURL, client.NSdav, "getetag")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(propETag) != headerETag {
+		return fmt.Errorf("DAV:getetag %q does not match ETag header %q", propETag, headerETag)
+	}
+	return nil
+}
+
+func testGetlastmodifiedFormat(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	body := client.PropfindProps([][2]string{{client.NSdav, "getlastmodified"}})
+	resp, err := c.Propfind(ctx, contactURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	val, err := assert.PropTextValue(ms, contactURL, client.NSdav, "getlastmodified")
+	if err != nil {
+		return err
+	}
+	val = strings.TrimSpace(val)
+	// RFC 4918 §15.7 requires RFC 1123 format (HTTP-date). Try both variants:
+	// time.RFC1123 uses "GMT" as timezone; time.RFC1123Z uses numeric offset.
+	if _, err := time.Parse(time.RFC1123, val); err != nil {
+		if _, err := time.Parse(time.RFC1123Z, val); err != nil {
+			return fmt.Errorf("DAV:getlastmodified %q is not a valid RFC 1123 date: %w", val, err)
+		}
+	}
+	return nil
 }

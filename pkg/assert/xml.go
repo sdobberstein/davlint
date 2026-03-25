@@ -254,6 +254,39 @@ func BodyContainsElement(body []byte, ns, local string) error {
 	return fmt.Errorf("BodyContainsElement: element {%s}%s not found in response body", ns, local)
 }
 
+// PropForbidden asserts that the named property appears in a 403 propstat for the
+// given href. Used to verify that a PROPPATCH attempt on a protected live property
+// is rejected with 403 per RFC 4918 §9.2.
+func PropForbidden(ms *client.Multistatus, href, ns, local string) error {
+	for i := range ms.Responses {
+		r := &ms.Responses[i]
+		if r.Href != href {
+			continue
+		}
+		for j := range r.PropStat {
+			ps := &r.PropStat[j]
+			if !strings.Contains(ps.Status, "403") {
+				continue
+			}
+			if client.PropInnerXML(ps.Prop.Inner, ns, local) {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("PropForbidden: property {%s}%s not found in a 403 propstat for <%s>", ns, local, href)
+}
+
+// PropTextValue returns the text content of the named property in the 200 propstat
+// for href. Use this when you need the actual value for comparison (e.g. matching
+// an ETag property value against a response header).
+func PropTextValue(ms *client.Multistatus, href, ns, local string) (string, error) {
+	ps, err := findPropStat(ms, href, "HTTP/1.1 200 OK")
+	if err != nil {
+		return "", fmt.Errorf("PropTextValue {%s}%s: %w", ns, local, err)
+	}
+	return extractText(ps.Prop.Inner, ns, local)
+}
+
 // PropNotFound asserts that the named property appears in a 404 propstat for the
 // given href in the multistatus. RFC 6352 §8.6 (R-85): a request for a
 // non-existent WebDAV property in a REPORT MUST be noted with 404 in DAV:propstat.
