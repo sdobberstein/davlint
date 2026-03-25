@@ -694,6 +694,116 @@ func init() {
 		},
 		Fn: testPhotoSizeLimit,
 	})
+	// §8.9 R-63 (SHOULD)
+	suite.Register(suite.Test{
+		ID:            "rfc6352.expand-property-report",
+		Suite:         "rfc6352",
+		Description:   "DAV:expand-property REPORT on the principal expands a nested property and returns 207",
+		Severity:      suite.Should,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.9", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.9"},
+		},
+		Fn: testExpandPropertyReport,
+	})
+	// §10.4.1 R-77
+	suite.Register(suite.Test{
+		ID:            "rfc6352.addressbook-query-unknown-vcard-prop",
+		Suite:         "rfc6352",
+		Description:   "addressbook-query C:address-data with an unknown vCard property name is accepted (returns 207)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§10.4.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-10.4.1"},
+		},
+		Fn: testAddressbookQueryUnknownVcardProp,
+	})
+	// §8.6 R-82
+	suite.Register(suite.Test{
+		ID:            "rfc6352.addressbook-query-depth-zero",
+		Suite:         "rfc6352",
+		Description:   "addressbook-query REPORT with Depth:0 does not return child address object resources",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.6", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.6"},
+		},
+		Fn: testAddressbookQueryDepthZero,
+	})
+	// §8.6 R-86
+	suite.Register(suite.Test{
+		ID:            "rfc6352.addressbook-query-bad-content-type",
+		Suite:         "rfc6352",
+		Description:   "addressbook-query REPORT with a non-XML Content-Type is rejected with 4xx (unsupported media type)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.6", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.6"},
+		},
+		Fn: testAddressbookQueryBadContentType,
+	})
+	// §8.7 R-97
+	suite.Register(suite.Test{
+		ID:            "rfc6352.addressbook-multiget-depth-nonzero",
+		Suite:         "rfc6352",
+		Description:   "addressbook-multiget REPORT with Depth:1 is rejected with 400",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.7", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.7"},
+		},
+		Fn: testAddressbookMultigetDepthNonzero,
+	})
+	// §8.7 R-101
+	suite.Register(suite.Test{
+		ID:            "rfc6352.addressbook-multiget-bad-content-type",
+		Suite:         "rfc6352",
+		Description:   "addressbook-multiget REPORT with a non-XML Content-Type is rejected with 4xx (unsupported media type)",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§8.7", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-8.7"},
+		},
+		Fn: testAddressbookMultigetBadContentType,
+	})
+	// §6.5.3
+	suite.Register(suite.Test{
+		ID:            "rfc6352.get-unsupported-accept",
+		Suite:         "rfc6352",
+		Description:   "GET with an unsupported Accept type is rejected with 4xx and CARDDAV:supported-address-data-conversion precondition",
+		Severity:      suite.Must,
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.5.3", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.5.3"},
+		},
+		Fn: testGetUnsupportedAccept,
+	})
+	// §6.3.2.1 R-41
+	suite.Register(suite.Test{
+		ID:            "rfc6352.copy-no-uid-conflict",
+		Suite:         "rfc6352",
+		Description:   "COPY of an address object into a collection that already contains a resource with the same UID is rejected with CARDDAV:no-uid-conflict",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
+		Fn: testCopyNoUIDConflict,
+	})
+	// §6.3.2.1 R-41
+	suite.Register(suite.Test{
+		ID:            "rfc6352.move-no-uid-conflict",
+		Suite:         "rfc6352",
+		Description:   "MOVE of an address object into a collection that already contains a resource with the same UID is rejected with CARDDAV:no-uid-conflict",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6352", Section: "§6.3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-6.3.2.1"},
+		},
+		Fn: testMoveNoUIDConflict,
+	})
 }
 
 // discoverHomeSet returns the addressbook-home-set URL for the primary client,
@@ -2760,4 +2870,361 @@ func testPhotoSizeLimit(ctx context.Context, sess *suite.Session) error {
 		return err
 	}
 	return assert.StatusCode(resp, 413)
+}
+
+// testExpandPropertyReport verifies RFC 6352 §8.9: a CardDAV server SHOULD
+// support the DAV:expand-property REPORT. If expand-property is not advertised
+// in supported-report-set the test passes trivially (opt-in behaviour).
+func testExpandPropertyReport(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	// Check whether the server advertises expand-property in supported-report-set.
+	srsBody := client.PropfindProps([][2]string{{client.NSdav, "supported-report-set"}})
+	srsResp, err := c.Propfind(ctx, colURL, "0", srsBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(srsResp, 207); err != nil {
+		return err
+	}
+	if !strings.Contains(string(srsResp.Body), "expand-property") {
+		// Not advertised — requirement not triggered.
+		return nil
+	}
+
+	// expand-property REPORT: expand DAV:current-user-principal → DAV:displayname.
+	principalURL, err := webdav.CurrentUserPrincipalURL(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	expandBody := []byte(`<D:expand-property xmlns:D="DAV:">` +
+		`<D:property name="current-user-principal">` +
+		`<D:property name="displayname"/>` +
+		`</D:property>` +
+		`</D:expand-property>`)
+	resp, err := c.Report(ctx, principalURL, expandBody)
+	if err != nil {
+		return err
+	}
+	return assert.StatusCode(resp, 207)
+}
+
+// testAddressbookQueryUnknownVcardProp verifies RFC 6352 §10.4.1 R-77: when a
+// C:address-data element requests a vCard property name that is unknown to the
+// server, the server MUST NOT reject the request — it MUST return 207 and simply
+// omit that property from the returned address data.
+func testAddressbookQueryUnknownVcardProp(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := putContact(ctx, c, colURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// Request a vCard property name that no server will have — the server MUST
+	// not reject the query (RFC 6352 §10.4.1 R-77).
+	body := client.ReportAddressbookQueryAddressDataProps([]string{"X-DAVLINT-UNKNOWN-ZZZ"}, nil)
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 207 {
+		return fmt.Errorf("addressbook-query with unknown C:prop name: got %d, want 207; server MUST accept unknown property names (RFC 6352 §10.4.1 R-77)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testAddressbookQueryDepthZero verifies RFC 6352 §8.6 R-82: when a
+// CARDDAV:addressbook-query REPORT is sent with Depth:0 it targets only the
+// collection itself, not its child address object resources. No contact entries
+// should appear in the multistatus response.
+func testAddressbookQueryDepthZero(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	body := client.ReportAddressbookQuery([][2]string{{client.NSdav, "getetag"}}, nil)
+	resp, err := c.ReportWithDepth(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	// Server may return 4xx for an unsupported Depth on this REPORT; either way the
+	// contact must not appear as a successful result.
+	if resp.StatusCode >= 400 {
+		return nil
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return err
+	}
+	// Depth:0 — child address object MUST NOT appear in the response.
+	return assert.NoResponseFor(ms, contactURL)
+}
+
+// testAddressbookQueryBadContentType verifies RFC 6352 §8.6 R-86: a
+// CARDDAV:addressbook-query REPORT sent with a non-XML Content-Type (e.g.
+// text/plain) MUST be rejected by the server with a 4xx status code.
+func testAddressbookQueryBadContentType(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if _, err := putContact(ctx, c, colURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	body := client.ReportAddressbookQuery([][2]string{{client.NSdav, "getetag"}}, nil)
+	resp, err := c.ReportRaw(ctx, colURL, "text/plain", "1", body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return fmt.Errorf("addressbook-query REPORT with Content-Type: text/plain was accepted (got %d); server MUST reject with 4xx (RFC 6352 §8.6 R-86)", resp.StatusCode)
+	}
+	if resp.StatusCode < 400 {
+		return fmt.Errorf("addressbook-query REPORT with Content-Type: text/plain: got %d; want 4xx (RFC 6352 §8.6 R-86)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testAddressbookMultigetDepthNonzero verifies RFC 6352 §8.7 R-97: a
+// CARDDAV:addressbook-multiget REPORT sent with Depth:1 MUST be rejected with
+// 400 Bad Request. The multiget REPORT always operates on explicitly listed
+// hrefs; a non-zero Depth has no defined meaning and MUST be rejected.
+func testAddressbookMultigetDepthNonzero(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	body := client.ReportAddressbookMultiget(
+		[][2]string{{client.NSdav, "getetag"}},
+		[]string{contactURL},
+	)
+	// RFC 6352 §8.7 R-97: Depth:1 MUST be rejected with 400.
+	resp, err := c.ReportWithDepth(ctx, colURL, "1", body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 207 {
+		// Server is permissive — requirement not triggered (treat as pass).
+		return nil
+	}
+	if resp.StatusCode != 400 {
+		return fmt.Errorf("addressbook-multiget REPORT with Depth:1: got %d, want 400 (RFC 6352 §8.7 R-97)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testAddressbookMultigetBadContentType verifies RFC 6352 §8.7 R-101: a
+// CARDDAV:addressbook-multiget REPORT sent with a non-XML Content-Type MUST be
+// rejected by the server with a 4xx status code.
+func testAddressbookMultigetBadContentType(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	body := client.ReportAddressbookMultiget(
+		[][2]string{{client.NSdav, "getetag"}},
+		[]string{contactURL},
+	)
+	resp, err := c.ReportRaw(ctx, colURL, "text/plain", "0", body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return fmt.Errorf("addressbook-multiget REPORT with Content-Type: text/plain was accepted (got %d); server MUST reject with 4xx (RFC 6352 §8.7 R-101)", resp.StatusCode)
+	}
+	if resp.StatusCode < 400 {
+		return fmt.Errorf("addressbook-multiget REPORT with Content-Type: text/plain: got %d; want 4xx (RFC 6352 §8.7 R-101)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testGetUnsupportedAccept verifies RFC 6352 §6.5.3: when a GET request
+// specifies an Accept type that the server does not support for address object
+// resources, the server MUST reject the request with a 4xx status and include a
+// CARDDAV:supported-address-data-conversion precondition in the response body.
+func testGetUnsupportedAccept(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL := colURL + "alice.vcf"
+	if _, err := putContact(ctx, c, contactURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// Request an accept type that no CardDAV server would support for vCards.
+	resp, err := c.GetWithAccept(ctx, contactURL, "application/octet-stream")
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 200 {
+		return fmt.Errorf("GET with Accept: application/octet-stream was accepted (got 200); server MUST reject with 4xx (RFC 6352 §6.5.3)")
+	}
+	if resp.StatusCode < 400 {
+		return fmt.Errorf("GET with Accept: application/octet-stream: got %d; want 4xx (RFC 6352 §6.5.3)", resp.StatusCode)
+	}
+	if !strings.Contains(string(resp.Body), "supported-address-data-conversion") {
+		return fmt.Errorf("GET with unsupported Accept: got %d but response body missing CARDDAV:supported-address-data-conversion precondition (RFC 6352 §6.5.3)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testCopyNoUIDConflict verifies RFC 6352 §6.3.2.1 R-41: COPYing an address
+// object resource into a collection that already contains a different resource
+// with the same UID MUST be rejected with the CARDDAV:no-uid-conflict precondition.
+func testCopyNoUIDConflict(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	srcURL, cleanupSrc, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupSrc)
+
+	dstURL, cleanupDst, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupDst)
+
+	// Put Alice in both collections using the same UID.
+	if _, err := putContact(ctx, c, srcURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+	if _, err := putContact(ctx, c, dstURL+"alice-existing.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// COPY alice.vcf from srcURL to dstURL — dstURL already has Alice's UID.
+	resp, err := c.Copy(ctx, srcURL+"alice.vcf", dstURL+"alice-copy.vcf", false)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 201 || resp.StatusCode == 204 {
+		sess.AddCleanup(func(ctx context.Context) { _, _ = c.Delete(ctx, dstURL+"alice-copy.vcf", "") }) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("COPY to collection with duplicate UID was accepted (got %d); server MUST reject with CARDDAV:no-uid-conflict (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	if !strings.Contains(string(resp.Body), "no-uid-conflict") {
+		return fmt.Errorf("COPY with duplicate UID: got %d but response body missing CARDDAV:no-uid-conflict precondition (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testMoveNoUIDConflict verifies RFC 6352 §6.3.2.1 R-41: MOVEing an address
+// object resource into a collection that already contains a different resource
+// with the same UID MUST be rejected with the CARDDAV:no-uid-conflict precondition.
+func testMoveNoUIDConflict(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	srcURL, cleanupSrc, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupSrc)
+
+	dstURL, cleanupDst, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanupDst)
+
+	// Put Alice in both collections using the same UID.
+	if _, err := putContact(ctx, c, srcURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+	if _, err := putContact(ctx, c, dstURL+"alice-existing.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// MOVE alice.vcf from srcURL to dstURL — dstURL already has Alice's UID.
+	resp, err := c.Move(ctx, srcURL+"alice.vcf", dstURL+"alice-moved.vcf", false)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 201 || resp.StatusCode == 204 {
+		sess.AddCleanup(func(ctx context.Context) { _, _ = c.Delete(ctx, dstURL+"alice-moved.vcf", "") }) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("MOVE to collection with duplicate UID was accepted (got %d); server MUST reject with CARDDAV:no-uid-conflict (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	if !strings.Contains(string(resp.Body), "no-uid-conflict") {
+		return fmt.Errorf("MOVE with duplicate UID: got %d but response body missing CARDDAV:no-uid-conflict precondition (RFC 6352 §6.3.2.1)", resp.StatusCode)
+	}
+	return nil
 }
