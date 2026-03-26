@@ -91,6 +91,13 @@ func (c *Client) Options(ctx context.Context, path string) (*Response, error) {
 	return c.do(ctx, http.MethodOptions, path, nil, nil)
 }
 
+// OptionsConditional sends an OPTIONS request with the given additional headers.
+// Use this to test that conditional request headers (e.g. If-Match) are ignored
+// for OPTIONS per RFC 7232 §5.
+func (c *Client) OptionsConditional(ctx context.Context, path string, header http.Header) (*Response, error) {
+	return c.do(ctx, http.MethodOptions, path, header, nil)
+}
+
 // Get sends a GET request.
 func (c *Client) Get(ctx context.Context, path string) (*Response, error) {
 	return c.do(ctx, http.MethodGet, path, nil, nil)
@@ -243,6 +250,17 @@ func (c *Client) PutNoAuth(ctx context.Context, path, contentType string, body [
 func (c *Client) ReportNoAuth(ctx context.Context, path string, body []byte) (*Response, error) {
 	h := http.Header{"Content-Type": {"application/xml; charset=utf-8"}}
 	return c.doNoAuth(ctx, "REPORT", path, h, body)
+}
+
+// ReportRaw sends a REPORT request with an explicit Content-Type header.
+// Use this to test server behavior when Content-Type is not application/xml
+// (e.g. RFC 6352 §8.6 R-86 and §8.7 R-101).
+func (c *Client) ReportRaw(ctx context.Context, path, contentType, depth string, body []byte) (*Response, error) {
+	h := http.Header{
+		"Content-Type": {contentType},
+		"Depth":        {depth},
+	}
+	return c.do(ctx, "REPORT", path, h, body)
 }
 
 // CopyNoOverwrite sends a COPY request without an Overwrite header.

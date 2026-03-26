@@ -236,6 +236,123 @@ func init() {
 		},
 		Fn:          testIfUnmodifiedSinceModified412,
 	})
+	// §3.3 R-20
+	suite.Register(suite.Test{
+		ID:            "rfc7232.if-modified-since-ignored-with-inm",
+		Suite:         "rfc7232",
+		Description:   "If-Modified-Since is ignored when If-None-Match is also present; INM controls the response",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§3.3", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-3.3"},
+		},
+		Fn: testIfModifiedSinceIgnoredWithINM,
+	})
+	// §3.3 R-21
+	suite.Register(suite.Test{
+		ID:            "rfc7232.if-modified-since-invalid-date-ignored",
+		Suite:         "rfc7232",
+		Description:   "If-Modified-Since with an invalid HTTP-date is ignored; server returns 200 normally",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§3.3", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-3.3"},
+		},
+		Fn: testIfModifiedSinceInvalidDateIgnored,
+	})
+	// §3.3 R-22
+	suite.Register(suite.Test{
+		ID:            "rfc7232.if-modified-since-non-get-ignored",
+		Suite:         "rfc7232",
+		Description:   "If-Modified-Since is ignored for non-GET/HEAD methods; PUT succeeds regardless",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§3.3", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-3.3"},
+		},
+		Fn: testIfModifiedSinceNonGetIgnored,
+	})
+	// §3.4 R-24
+	suite.Register(suite.Test{
+		ID:            "rfc7232.if-unmodified-since-ignored-with-im",
+		Suite:         "rfc7232",
+		Description:   "If-Unmodified-Since is ignored when If-Match is also present; If-Match controls the response",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§3.4", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-3.4"},
+		},
+		Fn: testIfUnmodifiedSinceIgnoredWithIM,
+	})
+	// §3.4 R-25
+	suite.Register(suite.Test{
+		ID:            "rfc7232.if-unmodified-since-invalid-date-ignored",
+		Suite:         "rfc7232",
+		Description:   "If-Unmodified-Since with an invalid HTTP-date is ignored; PUT succeeds normally",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§3.4", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-3.4"},
+		},
+		Fn: testIfUnmodifiedSinceInvalidDateIgnored,
+	})
+	// §4.1 R-28
+	suite.Register(suite.Test{
+		ID:            "rfc7232.not-modified-has-validator",
+		Suite:         "rfc7232",
+		Description:   "304 Not Modified response includes at least one of ETag, Date, Cache-Control, Expires, or Vary",
+		Severity:      suite.Should,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§4.1", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-4.1"},
+		},
+		Fn: testNotModifiedHasValidator,
+	})
+	// §5 R-31
+	suite.Register(suite.Test{
+		ID:            "rfc7232.precondition-ignored-for-error-response",
+		Suite:         "rfc7232",
+		Description:   "Precondition evaluation is skipped when the response would otherwise be non-2xx/non-412; GET on absent URL with If-Match returns 404, not 412",
+		Severity:      suite.Should,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-5"},
+		},
+		Fn: testPreconditionIgnoredForErrorResponse,
+	})
+	// §5 R-32
+	suite.Register(suite.Test{
+		ID:            "rfc7232.preconditions-ignored-for-options",
+		Suite:         "rfc7232",
+		Description:   "Conditional request headers are ignored for OPTIONS; stale If-Match does not produce 412",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-5"},
+		},
+		Fn: testPreconditionsIgnoredForOptions,
+	})
+	// §6 R-33
+	suite.Register(suite.Test{
+		ID:            "rfc7232.evaluation-order-im-before-inm",
+		Suite:         "rfc7232",
+		Description:   "If-Match is evaluated before If-None-Match; a failing If-Match returns 412 even when If-None-Match would allow the request",
+		Severity:      suite.Must,
+		Tags:          []string{"conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 7232", Section: "§6", URL: "https://www.rfc-editor.org/rfc/rfc7232#section-6"},
+		},
+		Fn: testEvaluationOrderIMBeforeINM,
+	})
 }
 
 // discoverHomeSet returns the addressbook-home-set URL for the primary client.
@@ -774,6 +891,335 @@ func testIfUnmodifiedSinceNotModifiedSucceeds(ctx context.Context, sess *suite.S
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return fmt.Errorf("PUT with If-Unmodified-Since: %s: got %d, want 2xx; server MUST allow write when resource has not been modified since the given date (RFC 7232 §3.4 R-26)", httpDateFuture, resp.StatusCode)
+	}
+	return nil
+}
+
+// testIfModifiedSinceIgnoredWithINM verifies RFC 7232 §3.3 R-20: when a request
+// contains both If-None-Match and If-Modified-Since, the server MUST ignore
+// If-Modified-Since and let If-None-Match alone determine the outcome.
+func testIfModifiedSinceIgnoredWithINM(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+	etag, err := getETag(ctx, c, contactURL)
+	if err != nil {
+		return err
+	}
+
+	// INM matches current ETag → would return 304.
+	// IMS: <past-date> → resource created after past → "was modified since past" → would return 200.
+	// Per R-20, IMS MUST be ignored; INM controls → 304.
+	resp, err := c.GetConditional(ctx, contactURL, http.Header{
+		"If-None-Match":     {etag},
+		"If-Modified-Since": {httpDatePast},
+	})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 304 {
+		return fmt.Errorf("GET with If-None-Match: %s + If-Modified-Since: %s: got %d, want 304; If-Modified-Since MUST be ignored when If-None-Match is present (RFC 7232 §3.3 R-20)", etag, httpDatePast, resp.StatusCode)
+	}
+	return nil
+}
+
+// testIfModifiedSinceInvalidDateIgnored verifies RFC 7232 §3.3 R-21: if the
+// If-Modified-Since field value is not a valid HTTP-date, the server MUST
+// ignore the header and process the request as though it were absent.
+func testIfModifiedSinceInvalidDateIgnored(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.GetConditional(ctx, contactURL, http.Header{"If-Modified-Since": {"not-a-valid-http-date"}})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("GET with invalid If-Modified-Since: got %d, want 200; server MUST ignore If-Modified-Since with an invalid date (RFC 7232 §3.3 R-21)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testIfModifiedSinceNonGetIgnored verifies RFC 7232 §3.3 R-22: the server
+// MUST ignore If-Modified-Since for any method other than GET or HEAD.
+// A PUT with If-Modified-Since: <future-date> MUST succeed (2xx), not fail.
+func testIfModifiedSinceNonGetIgnored(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	// IMS:<future-date>: for GET this means "not modified since future" → 304.
+	// For PUT, IMS MUST be ignored → 2xx.
+	resp, err := c.PutConditional(ctx, contactURL, "text/vcard; charset=utf-8",
+		http.Header{"If-Modified-Since": {httpDateFuture}},
+		[]byte(aliceModifiedV4),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("PUT with If-Modified-Since: %s: got %d, want 2xx; server MUST ignore If-Modified-Since for non-GET/HEAD methods (RFC 7232 §3.3 R-22)", httpDateFuture, resp.StatusCode)
+	}
+	return nil
+}
+
+// testIfUnmodifiedSinceIgnoredWithIM verifies RFC 7232 §3.4 R-24: when a
+// request contains both If-Match and If-Unmodified-Since, the server MUST
+// ignore If-Unmodified-Since and let If-Match alone determine the outcome.
+func testIfUnmodifiedSinceIgnoredWithIM(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+	etag, err := getETag(ctx, c, contactURL)
+	if err != nil {
+		return err
+	}
+
+	// IM matches current ETag → would allow the PUT.
+	// IUS: <past-date> → resource modified after past → "was modified since past" → would return 412.
+	// Per R-24, IUS MUST be ignored when IM is present; IM matches → 2xx.
+	resp, err := c.PutConditional(ctx, contactURL, "text/vcard; charset=utf-8",
+		http.Header{
+			"If-Match":             {etag},
+			"If-Unmodified-Since": {httpDatePast},
+		},
+		[]byte(aliceModifiedV4),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("PUT with If-Match: %s + If-Unmodified-Since: %s: got %d, want 2xx; If-Unmodified-Since MUST be ignored when If-Match is present (RFC 7232 §3.4 R-24)", etag, httpDatePast, resp.StatusCode)
+	}
+	return nil
+}
+
+// testIfUnmodifiedSinceInvalidDateIgnored verifies RFC 7232 §3.4 R-25: if the
+// If-Unmodified-Since field value is not a valid HTTP-date, the server MUST
+// ignore the header and process the request as though it were absent.
+func testIfUnmodifiedSinceInvalidDateIgnored(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.PutConditional(ctx, contactURL, "text/vcard; charset=utf-8",
+		http.Header{"If-Unmodified-Since": {"not-a-valid-http-date"}},
+		[]byte(aliceModifiedV4),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("PUT with invalid If-Unmodified-Since: got %d, want 2xx; server MUST ignore If-Unmodified-Since with an invalid date (RFC 7232 §3.4 R-25)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testNotModifiedHasValidator verifies RFC 7232 §4.1 R-28: a 304 Not Modified
+// response SHOULD include at least one of ETag, Date, Cache-Control, Expires,
+// or Vary headers so that the client can update its cached entry.
+func testNotModifiedHasValidator(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+	etag, err := getETag(ctx, c, contactURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.GetConditional(ctx, contactURL, http.Header{"If-None-Match": {etag}})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 304 {
+		return fmt.Errorf("GET with matching If-None-Match: got %d, want 304 (prerequisite for validator check)", resp.StatusCode)
+	}
+	for _, h := range []string{"ETag", "Date", "Cache-Control", "Expires", "Vary"} {
+		if resp.Header.Get(h) != "" {
+			return nil
+		}
+	}
+	return fmt.Errorf("304 response missing all of ETag/Date/Cache-Control/Expires/Vary; server SHOULD include at least one validator (RFC 7232 §4.1 R-28)")
+}
+
+// testPreconditionIgnoredForErrorResponse verifies RFC 7232 §5 R-31: when the
+// response without a precondition would be non-2xx and non-412, the server MUST
+// NOT evaluate the precondition. A GET with If-Match on a non-existent resource
+// should return 404, not 412.
+func testPreconditionIgnoredForErrorResponse(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	// Use a URL that has never been created — GET would return 404.
+	absentURL := fmt.Sprintf("%sdavlint-absent-%08x.vcf", colURL, rand.Uint32()) // #nosec G404
+	resp, err := c.GetConditional(ctx, absentURL, http.Header{"If-Match": {`"davlint-stale-etag"`}})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 412 {
+		return fmt.Errorf("GET with If-Match on absent resource: got 412; server SHOULD return 404 because the response without the precondition would be 404, not 2xx or 412 (RFC 7232 §5 R-31)")
+	}
+	if resp.StatusCode != 404 {
+		return fmt.Errorf("GET with If-Match on absent resource: got %d, want 404 (RFC 7232 §5 R-31)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testPreconditionsIgnoredForOptions verifies RFC 7232 §5 R-32: precondition
+// header fields MUST be ignored for methods that do not define when they apply.
+// OPTIONS does not define conditional request semantics, so a stale If-Match
+// MUST NOT produce 412.
+func testPreconditionsIgnoredForOptions(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	// Send OPTIONS with a stale If-Match. If the server incorrectly evaluates
+	// the precondition it returns 412; the correct response is 200.
+	resp, err := c.OptionsConditional(ctx, contactURL,
+		http.Header{"If-Match": {`"davlint-stale-etag"`}},
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 412 {
+		return fmt.Errorf("OPTIONS with stale If-Match: got 412; server MUST ignore preconditions for OPTIONS (RFC 7232 §5 R-32)")
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("OPTIONS with stale If-Match: got %d, want 200 (RFC 7232 §5 R-32)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testEvaluationOrderIMBeforeINM verifies RFC 7232 §6 R-33: If-Match MUST be
+// evaluated before If-None-Match. When If-Match fails (stale ETag) and
+// If-None-Match would allow the request (non-matching ETag), the result MUST
+// be 412 because If-Match is evaluated first.
+func testEvaluationOrderIMBeforeINM(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	contactURL, err := putTestContact(ctx, c, colURL)
+	if err != nil {
+		return err
+	}
+
+	// If-Match: "stale" → fails (wrong ETag) → would return 412.
+	// If-None-Match: "also-stale" → does not match current ETag → condition TRUE → would allow the PUT.
+	// Per RFC 7232 §6, If-Match is evaluated first → 412.
+	resp, err := c.PutConditional(ctx, contactURL, "text/vcard; charset=utf-8",
+		http.Header{
+			"If-Match":     {`"davlint-stale-im"`},
+			"If-None-Match": {`"davlint-stale-inm"`},
+		},
+		[]byte(aliceModifiedV4),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 412 {
+		return fmt.Errorf("PUT with failing If-Match + non-matching If-None-Match: got %d, want 412; If-Match MUST be evaluated before If-None-Match (RFC 7232 §6 R-33)", resp.StatusCode)
 	}
 	return nil
 }
