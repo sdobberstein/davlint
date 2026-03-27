@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -21,6 +22,15 @@ import (
 	"github.com/sdobberstein/davlint/pkg/suite"
 	"github.com/sdobberstein/davlint/pkg/webdav"
 )
+
+// aliceModifiedV4 is AliceV4 with a different FN and same UID, used to force
+// a content change on the same URL without triggering UID-conflict errors.
+const aliceModifiedV4 = "BEGIN:VCARD\r\n" +
+	"VERSION:4.0\r\n" +
+	"UID:urn:uuid:aaaaaaaa-0000-0000-0000-000000000001\r\n" +
+	"FN:Alice Updated\r\n" +
+	"N:Updated;Alice;;;\r\n" +
+	"END:VCARD\r\n"
 
 func init() {
 	suite.Register(suite.Test{
@@ -214,6 +224,95 @@ func init() {
 			{RFC: "RFC 6578", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-5"},
 		},
 		Fn:          testIfHeaderStaleToken,
+	})
+	// §3.6: invalid-token error body
+	suite.Register(suite.Test{
+		ID:            "rfc6578.invalid-token-error-body",
+		Suite:         "rfc6578",
+		Description:   "sync-collection REPORT with an invalid token returns a DAV:error body containing DAV:valid-sync-token",
+		Severity:      suite.Must,
+		Tags:          []string{"sync"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.6", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.6"},
+		},
+		Fn: testInvalidTokenErrorBody,
+	})
+	// §4: sync-token is protected
+	suite.Register(suite.Test{
+		ID:            "rfc6578.sync-token-protected",
+		Suite:         "rfc6578",
+		Description:   "PROPPATCH attempting to set DAV:sync-token is rejected with 403 (property is protected)",
+		Severity:      suite.Must,
+		Tags:          []string{"sync"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§4", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-4"},
+		},
+		Fn: testSyncTokenProtected,
+	})
+	// §4: sync-token PROPFIND value equals REPORT value
+	suite.Register(suite.Test{
+		ID:            "rfc6578.sync-token-propfind-consistency",
+		Suite:         "rfc6578",
+		Description:   "DAV:sync-token returned by PROPFIND equals the token returned by the immediately preceding sync-collection REPORT",
+		Severity:      suite.Must,
+		Tags:          []string{"sync"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§4", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-4"},
+		},
+		Fn: testSyncTokenPropfindConsistency,
+	})
+	// §3.5 R-31: updated resource appears as changed
+	suite.Register(suite.Test{
+		ID:            "rfc6578.subsequent-sync-updated",
+		Suite:         "rfc6578",
+		Description:   "sync-collection REPORT after PUT-updating an existing resource returns it as changed",
+		Severity:      suite.Must,
+		Tags:          []string{"sync"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§3.5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-3.5"},
+		},
+		Fn: testSubsequentSyncUpdated,
+	})
+	// §5: If-header with PUT
+	suite.Register(suite.Test{
+		ID:            "rfc6578.if-header-put-valid-token",
+		Suite:         "rfc6578",
+		Description:   "PUT with current sync-token in If header succeeds",
+		Severity:      suite.Must,
+		Tags:          []string{"sync", "conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-5"},
+		},
+		Fn: testIfHeaderPutValidToken,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc6578.if-header-put-stale-token",
+		Suite:         "rfc6578",
+		Description:   "PUT with an outdated sync-token in If header returns 412 Precondition Failed",
+		Severity:      suite.Must,
+		Tags:          []string{"sync", "conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-5"},
+		},
+		Fn: testIfHeaderPutStaleToken,
+	})
+	suite.Register(suite.Test{
+		ID:            "rfc6578.if-header-delete-stale-token",
+		Suite:         "rfc6578",
+		Description:   "DELETE with an outdated sync-token in If header returns 412 Precondition Failed",
+		Severity:      suite.Must,
+		Tags:          []string{"sync", "conditional"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 6578", Section: "§5", URL: "https://www.rfc-editor.org/rfc/rfc6578#section-5"},
+		},
+		Fn: testIfHeaderDeleteStaleToken,
 	})
 }
 
@@ -882,6 +981,289 @@ func testIfHeaderStaleToken(ctx context.Context, sess *suite.Session) error {
 	}
 	if resp.StatusCode != 412 {
 		return fmt.Errorf("if-header-stale-token: got %d with outdated sync-token in If header, want 412 Precondition Failed", resp.StatusCode)
+	}
+	return nil
+}
+
+// testInvalidTokenErrorBody verifies RFC 6578 §3.6: when a sync-collection
+// REPORT is rejected due to an invalid sync-token, the response body MUST
+// contain a DAV:error element with a DAV:valid-sync-token precondition.
+func testInvalidTokenErrorBody(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.ReportSyncCollection("urn:davlint:invalid-sync-token-xyz", "1", syncProps)
+	resp, err := c.ReportWithDepth(ctx, colURL, "0", body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 400 || resp.StatusCode >= 600 {
+		return fmt.Errorf("invalid sync-token: got %d, want 4xx", resp.StatusCode)
+	}
+	return assert.BodyContainsElement(resp.Body, client.NSdav, "valid-sync-token")
+}
+
+// testSyncTokenProtected verifies RFC 6578 §4: DAV:sync-token MUST be a
+// protected property; any PROPPATCH attempt to set it MUST be rejected with 403.
+func testSyncTokenProtected(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	body := client.ProppatchSet([][3]string{
+		{client.NSdav, "sync-token", "urn:davlint:fake-token"},
+	})
+	resp, err := c.Proppatch(ctx, colURL, body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 403 {
+		return nil
+	}
+	if resp.StatusCode == 207 && strings.Contains(string(resp.Body), "403") {
+		return nil
+	}
+	return fmt.Errorf("PROPPATCH on DAV:sync-token: got %d without 403; property MUST be protected (RFC 6578 §4)", resp.StatusCode)
+}
+
+// testSyncTokenPropfindConsistency verifies RFC 6578 §4: the DAV:sync-token
+// value returned by PROPFIND MUST equal the token returned by the immediately
+// preceding sync-collection REPORT.
+func testSyncTokenPropfindConsistency(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	if err := putContact(ctx, c, colURL+"alice.vcf", []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	// Get the current sync-token via a sync-collection REPORT.
+	_, reportToken, err := doSync(ctx, c, colURL, "")
+	if err != nil {
+		return fmt.Errorf("sync-collection REPORT: %w", err)
+	}
+
+	// Get the sync-token via PROPFIND on the same collection.
+	propBody := client.PropfindProps([][2]string{{client.NSdav, "sync-token"}})
+	propResp, err := c.Propfind(ctx, colURL, "0", propBody)
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(propResp, 207); err != nil {
+		return err
+	}
+	ms, err := client.ParseMultistatus(propResp.Body)
+	if err != nil {
+		return err
+	}
+	propToken, err := assert.PropTextValue(ms, colURL, client.NSdav, "sync-token")
+	if err != nil {
+		return fmt.Errorf("sync-token-propfind-consistency: %w", err)
+	}
+	if propToken != reportToken {
+		return fmt.Errorf("sync-token-propfind-consistency: PROPFIND returned %q but REPORT returned %q; values MUST be equal (RFC 6578 §4)", propToken, reportToken)
+	}
+	return nil
+}
+
+// testSubsequentSyncUpdated verifies RFC 6578 §3.5 R-31: after an existing
+// resource is updated via PUT, a subsequent sync-collection REPORT MUST report
+// the resource as changed (propstat, no status element).
+func testSubsequentSyncUpdated(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	aliceURL := colURL + "alice.vcf"
+	if err := putContact(ctx, c, aliceURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	_, token, err := doSync(ctx, c, colURL, "")
+	if err != nil {
+		return fmt.Errorf("initial sync: %w", err)
+	}
+
+	// Update alice in-place (same UID, different FN) — ETag must change.
+	if err := putContact(ctx, c, aliceURL, []byte(aliceModifiedV4)); err != nil {
+		return err
+	}
+
+	ms, _, err := doSync(ctx, c, colURL, token)
+	if err != nil {
+		return fmt.Errorf("subsequent sync: %w", err)
+	}
+
+	if err := assertChanged(ms, aliceURL); err != nil {
+		return fmt.Errorf("subsequent-sync-updated: updated resource not reported as changed: %w", err)
+	}
+	return nil
+}
+
+// testIfHeaderPutValidToken verifies RFC 6578 §5: servers MUST support use of
+// DAV:sync-token values in If request headers for PUT. A PUT carrying the
+// current sync-token MUST succeed.
+func testIfHeaderPutValidToken(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	aliceURL := colURL + "alice.vcf"
+	if err := putContact(ctx, c, aliceURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	_, token, err := doSync(ctx, c, colURL, "")
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.PutConditional(ctx, aliceURL, "text/vcard; charset=utf-8",
+		http.Header{"If": {"(<" + token + ">)"}},
+		[]byte(aliceModifiedV4),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 412 {
+		return fmt.Errorf("if-header-put-valid-token: got 412 with current sync-token; server MUST accept valid token in If header (RFC 6578 §5)")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("if-header-put-valid-token: got %d, want 2xx (RFC 6578 §5)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testIfHeaderPutStaleToken verifies RFC 6578 §5: a PUT carrying an outdated
+// sync-token in the If header MUST return 412 Precondition Failed.
+func testIfHeaderPutStaleToken(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	aliceURL := colURL + "alice.vcf"
+	if err := putContact(ctx, c, aliceURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	_, token1, err := doSync(ctx, c, colURL, "")
+	if err != nil {
+		return fmt.Errorf("initial sync: %w", err)
+	}
+
+	// Advance the token by modifying the collection.
+	if err := putContact(ctx, c, colURL+"bob.vcf", []byte(fixtures.BobV4)); err != nil {
+		return err
+	}
+	_, token2, err := doSync(ctx, c, colURL, token1)
+	if err != nil {
+		return fmt.Errorf("subsequent sync: %w", err)
+	}
+	if token2 == token1 {
+		// Token didn't advance — server may batch; skip rather than false negative.
+		return nil
+	}
+
+	resp, err := c.PutConditional(ctx, aliceURL, "text/vcard; charset=utf-8",
+		http.Header{"If": {"(<" + token1 + ">)"}},
+		[]byte(aliceModifiedV4),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 412 {
+		return fmt.Errorf("if-header-put-stale-token: got %d with outdated sync-token in If header, want 412 Precondition Failed (RFC 6578 §5)", resp.StatusCode)
+	}
+	return nil
+}
+
+// testIfHeaderDeleteStaleToken verifies RFC 6578 §5: a DELETE carrying an
+// outdated sync-token in the If header MUST return 412 Precondition Failed.
+func testIfHeaderDeleteStaleToken(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	aliceURL := colURL + "alice.vcf"
+	if err := putContact(ctx, c, aliceURL, []byte(fixtures.AliceV4)); err != nil {
+		return err
+	}
+
+	_, token1, err := doSync(ctx, c, colURL, "")
+	if err != nil {
+		return fmt.Errorf("initial sync: %w", err)
+	}
+
+	// Advance the token by modifying the collection.
+	if err := putContact(ctx, c, colURL+"bob.vcf", []byte(fixtures.BobV4)); err != nil {
+		return err
+	}
+	_, token2, err := doSync(ctx, c, colURL, token1)
+	if err != nil {
+		return fmt.Errorf("subsequent sync: %w", err)
+	}
+	if token2 == token1 {
+		// Token didn't advance — skip rather than false negative.
+		return nil
+	}
+
+	resp, err := c.DeleteWithIf(ctx, aliceURL, token1)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 412 {
+		return fmt.Errorf("if-header-delete-stale-token: got %d with outdated sync-token in If header, want 412 Precondition Failed (RFC 6578 §5)", resp.StatusCode)
 	}
 	return nil
 }

@@ -123,6 +123,15 @@ func (c *Client) Delete(ctx context.Context, path, ifMatch string) (*Response, e
 	return c.do(ctx, http.MethodDelete, path, h, nil)
 }
 
+// DeleteWithIf sends a DELETE request with a DAV If state-token header.
+// token is wrapped as required by RFC 4918 §10.4: If: (<token>).
+// Use this to test that a server honours DAV:sync-token values as state tokens
+// per RFC 6578 §5.
+func (c *Client) DeleteWithIf(ctx context.Context, path, token string) (*Response, error) {
+	h := http.Header{"If": {"(<" + token + ">"}}
+	return c.do(ctx, http.MethodDelete, path, h, nil)
+}
+
 // Mkcol sends a MKCOL request. body may be nil for simple MKCOL (RFC 4918),
 // or an XML body for extended MKCOL (RFC 5689).
 func (c *Client) Mkcol(ctx context.Context, path string, body []byte) (*Response, error) {
