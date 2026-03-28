@@ -191,6 +191,76 @@ func init() {
 		},
 		Fn: testSemicolonEscapeAccepted,
 	})
+	// §3.6.1: PROFILE value must be "VCARD" for a vCard object; PROFILE:VCALENDAR should be rejected.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.reject-invalid-profile",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with PROFILE:VCALENDAR is rejected with 4xx (RFC 2426 §3.6.1 / RFC 6352 §5.1 SHOULD)",
+		Severity:      suite.Should,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§3.6.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.6.1"},
+			{RFC: "RFC 6352", Section: "§5.1", URL: "https://www.rfc-editor.org/rfc/rfc6352#section-5.1"},
+		},
+		Fn: testRejectInvalidProfile,
+	})
+	// §3.2.1 / §2.3: Escaped SEMI-COLON inside an ADR component value MUST not be treated as
+	// a component separator; the value after \; MUST survive a round-trip.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.adr-escaped-semicolon-roundtrip",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with \\; inside an ADR component; the value after \\; survives GET (RFC 2426 §3.2.1, §2.3 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.3", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.3"},
+			{RFC: "RFC 2426", Section: "§3.2.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.2.1"},
+		},
+		Fn: testADREscapedSemicolonRoundtrip,
+	})
+	// §3.1.3 / §2.3: Escaped COMMA inside a NICKNAME list value MUST not be treated as a
+	// list separator; the text after \, MUST survive a round-trip.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.nickname-escaped-comma-roundtrip",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with \\, inside NICKNAME; the value after \\, survives GET (RFC 2426 §3.1.3, §2.3 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.3", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.3"},
+			{RFC: "RFC 2426", Section: "§3.1.3", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.1.3"},
+		},
+		Fn: testNicknameEscapedCommaRoundtrip,
+	})
+	// §2.4.1: Duplicate predefined TYPE parameter values (e.g. TYPE=WORK,WORK) SHOULD be rejected.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.reject-duplicate-type",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with TYPE=WORK,WORK is rejected with 4xx (RFC 2426 §2.4.1 SHOULD)",
+		Severity:      suite.Should,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§2.4.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.4.1"},
+		},
+		Fn: testRejectDuplicateType,
+	})
+	// §3.4.2: GEO property MUST accept decimal-degree values and preserve them through a round-trip.
+	suite.Register(suite.Test{
+		ID:            "rfc2426.geo-decimal-degrees-accepted",
+		Suite:         "rfc2426",
+		Description:   "PUT a vCard with GEO in decimal degrees is accepted and the value survives GET (RFC 2426 §3.4.2 MUST)",
+		Severity:      suite.Must,
+		Tags:          []string{"vcard"},
+		MinPrincipals: 1,
+		References: []suite.RFCRef{
+			{RFC: "RFC 2426", Section: "§3.4.2", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-3.4.2"},
+		},
+		Fn: testGEODecimalDegreesAccepted,
+	})
 }
 
 func discoverHomeSet(ctx context.Context, c *client.Client, contextPath string) (string, error) {
@@ -344,6 +414,58 @@ const vcardEscapedSemicolon = "BEGIN:VCARD\r\n" +
 	"UID:urn:uuid:e0000000-0000-0000-0000-000000000001\r\n" +
 	`FN:Alice\; The Test` + "\r\n" +
 	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// vcardInvalidProfile has PROFILE:VCALENDAR. A CardDAV server storing vCard objects
+// should reject a profile claiming to be VCALENDAR (RFC 2426 §3.6.1 / RFC 6352 §5.1).
+const vcardInvalidProfile = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"PROFILE:VCALENDAR\r\n" +
+	"UID:urn:uuid:p0000000-0000-0000-0000-000000000001\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"END:VCARD\r\n"
+
+// vcardADREscapedSemicolon is a vCard 3.0 whose street component contains a
+// backslash-escaped semicolon per RFC 2426 §2.3. The \; MUST NOT be treated as
+// a component separator — the text after it ("Side St") MUST survive a round-trip.
+const vcardADREscapedSemicolon = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:a0000000-0000-0000-0000-000000000002\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"ADR;TYPE=HOME:;;123 Main\\; Side St;Springfield;IL;62701;USA\r\n" +
+	"END:VCARD\r\n"
+
+// vcardNICKNAMEEscapedComma is a vCard 3.0 whose NICKNAME contains a
+// backslash-escaped comma per RFC 2426 §2.3. The \, MUST NOT be treated as a
+// list separator — the text after it ("the Great") MUST survive a round-trip.
+const vcardNICKNAMEEscapedComma = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:n0000000-0000-0000-0000-000000000001\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"NICKNAME:Alice\\, the Great\r\n" +
+	"END:VCARD\r\n"
+
+// vcardDuplicateType has TYPE=WORK,WORK on a TEL property. Duplicate predefined
+// TYPE values are considered invalid per RFC 2426 §2.4.1.
+const vcardDuplicateType = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:d0000000-0000-0000-0000-000000000001\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"TEL;TYPE=WORK,WORK:+1-555-555-5555\r\n" +
+	"END:VCARD\r\n"
+
+// vcardGEO is a valid vCard 3.0 with a GEO property using decimal-degree values
+// per RFC 2426 §3.4.2. The latitude/longitude pair MUST survive a round-trip.
+const vcardGEO = "BEGIN:VCARD\r\n" +
+	"VERSION:3.0\r\n" +
+	"UID:urn:uuid:g0000000-0000-0000-0000-000000000001\r\n" +
+	"FN:Alice Test\r\n" +
+	"N:Test;Alice;;;\r\n" +
+	"GEO:37.386013;-122.082932\r\n" +
 	"END:VCARD\r\n"
 
 // --- Tests ---
@@ -582,5 +704,133 @@ func testSemicolonEscapeAccepted(ctx context.Context, sess *suite.Session) error
 	// The stored value must contain "Alice" — the part before the escaped semicolon.
 	// This confirms the server parsed and preserved the FN rather than splitting on it.
 	return assert.BodyHas(resp.Body, "Alice")
+}
+
+func testRejectInvalidProfile(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardInvalidProfile), "PUT vCard with PROFILE:VCALENDAR")
+}
+
+// testADREscapedSemicolonRoundtrip verifies RFC 2426 §2.3 / §3.2.1: a backslash-escaped
+// semicolon (\;) inside an ADR component value MUST NOT be treated as a component
+// separator. The text after the \; ("Side St") must survive the round-trip. If the server
+// incorrectly splits on \;, the ADR gains an extra component (8 instead of 7) which a
+// strict server may reject, or the street value is truncated and "Side St" shifts to the
+// wrong component position.
+func testADREscapedSemicolonRoundtrip(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"adr-esc.vcf", "text/vcard; charset=utf-8", []byte(vcardADREscapedSemicolon))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard with \\; in ADR component: got %d, want 201", resp.StatusCode)
+	}
+
+	resp, err = c.Get(ctx, colURL+"adr-esc.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// "Side St" is the text that follows the escaped semicolon in the street component.
+	// Its presence confirms the server did not truncate the component at \;.
+	unfolded := unfoldVCard(resp.Body)
+	if err := assert.BodyHas(unfolded, "Side St"); err != nil {
+		return fmt.Errorf("ADR escaped-semicolon round-trip: text after '\\;' not found; server may have split on \\;: %w", err)
+	}
+	return nil
+}
+
+// testNicknameEscapedCommaRoundtrip verifies RFC 2426 §2.3 / §3.1.3: a backslash-escaped
+// comma (\,) inside a NICKNAME value MUST NOT be treated as a list separator. The text
+// after the \, ("the Great") must survive the round-trip. If the server incorrectly splits
+// on \,, the text after the comma may be dropped or stored as a separate, potentially
+// rejected list item.
+func testNicknameEscapedCommaRoundtrip(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"nick-esc.vcf", "text/vcard; charset=utf-8", []byte(vcardNICKNAMEEscapedComma))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard with \\, in NICKNAME: got %d, want 201", resp.StatusCode)
+	}
+
+	resp, err = c.Get(ctx, colURL+"nick-esc.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// "the Great" is the text that follows the escaped comma in the NICKNAME value.
+	// Its presence confirms the server did not truncate the value at \,.
+	unfolded := unfoldVCard(resp.Body)
+	if err := assert.BodyHas(unfolded, "the Great"); err != nil {
+		return fmt.Errorf("NICKNAME escaped-comma round-trip: text after '\\,' not found; server may have split on \\,: %w", err)
+	}
+	return nil
+}
+
+func testRejectDuplicateType(ctx context.Context, sess *suite.Session) error {
+	return putInvalidVCard(ctx, sess, []byte(vcardDuplicateType), "PUT vCard with TYPE=WORK,WORK duplicate type value")
+}
+
+// testGEODecimalDegreesAccepted verifies RFC 2426 §3.4.2: the GEO property MUST accept
+// decimal-degree float values. The latitude value must survive a PUT→GET round-trip.
+func testGEODecimalDegreesAccepted(ctx context.Context, sess *suite.Session) error {
+	c := sess.Primary()
+	homeSet, err := discoverHomeSet(ctx, c, sess.ContextPath)
+	if err != nil {
+		return err
+	}
+	colURL, cleanup, err := makeTestCollection(ctx, c, homeSet)
+	if err != nil {
+		return err
+	}
+	sess.AddCleanup(cleanup)
+
+	resp, err := c.Put(ctx, colURL+"geo.vcf", "text/vcard; charset=utf-8", []byte(vcardGEO))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("PUT vCard with GEO decimal degrees: got %d, want 201", resp.StatusCode)
+	}
+
+	resp, err = c.Get(ctx, colURL+"geo.vcf")
+	if err != nil {
+		return err
+	}
+	if err := assert.StatusCode(resp, 200); err != nil {
+		return err
+	}
+	// The latitude value must be present in the response to confirm it was stored.
+	unfolded := unfoldVCard(resp.Body)
+	if err := assert.BodyHas(unfolded, "37.386013"); err != nil {
+		return fmt.Errorf("GEO decimal-degrees round-trip: latitude not found in response: %w", err)
+	}
+	return nil
 }
 
