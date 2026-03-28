@@ -18,6 +18,7 @@ import (
 
 	// Register conformance test suites.
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc2426"
+	_ "github.com/sdobberstein/davlint/internal/suites/rfc3253"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc4918"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc5689"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6350"
