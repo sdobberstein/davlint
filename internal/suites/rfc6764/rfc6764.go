@@ -94,6 +94,7 @@ func init() {
 		MinPrincipals: 1,
 		References: []suite.RFCRef{
 			{RFC: "RFC 6764", Section: "§6", URL: "https://www.rfc-editor.org/rfc/rfc6764#section-6"},
+			{RFC: "RFC 5397", Section: "§3", URL: "https://www.rfc-editor.org/rfc/rfc5397#section-3"},
 		},
 		Fn:          testCurrentUserPrincipal,
 	})
@@ -106,6 +107,7 @@ func init() {
 		MinPrincipals: 1,
 		References: []suite.RFCRef{
 			{RFC: "RFC 6764", Section: "§7", URL: "https://www.rfc-editor.org/rfc/rfc6764#section-7"},
+			{RFC: "RFC 5397", Section: "§3", URL: "https://www.rfc-editor.org/rfc/rfc5397#section-3"},
 		},
 		Fn:          testCurrentUserPrincipalRequiresAuth,
 	})
