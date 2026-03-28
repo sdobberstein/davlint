@@ -23,6 +23,7 @@ import (
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc4918"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc5545"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc5689"
+	_ "github.com/sdobberstein/davlint/internal/suites/rfc7986"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6350"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6352"
 	_ "github.com/sdobberstein/davlint/internal/suites/rfc6578"
@@ -263,7 +264,7 @@ func matchesSelector(id, sel string) bool {
 var protocolBundles = map[string][]string{
 	"webdav":  {"rfc4918", "rfc7232"},
 	"carddav": {"rfc4918", "rfc6352", "rfc6578", "rfc6764", "rfc2426", "rfc7232"},
-	"caldav":  {"rfc4918", "rfc4791", "rfc6578", "rfc6764", "rfc7232"},
+	"caldav":  {"rfc4918", "rfc4791", "rfc5545", "rfc7986", "rfc6578", "rfc6764", "rfc7232"},
 }
 
 func suiteInProtocol(suiteID, protocol string) bool {
