@@ -142,6 +142,16 @@ func (c *Client) Mkcol(ctx context.Context, path string, body []byte) (*Response
 	return c.do(ctx, "MKCOL", path, h, body)
 }
 
+// Mkcalendar sends a MKCALENDAR request (RFC 4791 §5.3.1). body may be nil for
+// a simple calendar collection, or an XML body for MKCALENDAR with initial properties.
+func (c *Client) Mkcalendar(ctx context.Context, path string, body []byte) (*Response, error) {
+	var h http.Header
+	if body != nil {
+		h = http.Header{"Content-Type": {"application/xml; charset=utf-8"}}
+	}
+	return c.do(ctx, "MKCALENDAR", path, h, body)
+}
+
 // MkcolRaw sends a MKCOL request with an explicit Content-Type header.
 // Use this to test server behaviour when Content-Type is incorrect (RFC 5689 §3 R-01).
 func (c *Client) MkcolRaw(ctx context.Context, path, contentType string, body []byte) (*Response, error) {

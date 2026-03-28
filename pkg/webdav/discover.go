@@ -36,6 +36,30 @@ func CurrentUserPrincipalURL(ctx context.Context, c *client.Client, contextPath 
 	return href, nil
 }
 
+// CalendarHomeSetURL issues a depth-0 PROPFIND on principalURL and returns
+// the DAV:href value of the caldav:calendar-home-set property.
+func CalendarHomeSetURL(ctx context.Context, c *client.Client, principalURL string) (string, error) {
+	body := client.PropfindProps([][2]string{
+		{client.NScaldav, "calendar-home-set"},
+	})
+	resp, err := c.Propfind(ctx, principalURL, "0", body)
+	if err != nil {
+		return "", fmt.Errorf("calendar-home-set lookup: %w", err)
+	}
+	if err := assert.StatusCode(resp, 207); err != nil {
+		return "", fmt.Errorf("calendar-home-set lookup: %w", err)
+	}
+	ms, err := client.ParseMultistatus(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("calendar-home-set lookup: %w", err)
+	}
+	href, err := assert.PropHrefValue(ms, principalURL, client.NScaldav, "calendar-home-set")
+	if err != nil {
+		return "", fmt.Errorf("calendar-home-set lookup: %w", err)
+	}
+	return href, nil
+}
+
 // AddressbookHomeSetURL issues a depth-0 PROPFIND on principalURL and returns
 // the DAV:href value of the carddav:addressbook-home-set property.
 func AddressbookHomeSetURL(ctx context.Context, c *client.Client, principalURL string) (string, error) {

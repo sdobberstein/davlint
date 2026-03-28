@@ -11,6 +11,7 @@ import (
 const (
 	NSdav     = "DAV:"
 	NScarddav = "urn:ietf:params:xml:ns:carddav"
+	NScaldav  = "urn:ietf:params:xml:ns:caldav"
 )
 
 // Multistatus is the top-level element of a 207 Multi-Status response (RFC 4918 §13.4.2).
@@ -53,7 +54,7 @@ func ParseMultistatus(body []byte) (*Multistatus, error) {
 func PropInnerXML(inner []byte, ns, local string) bool {
 	// Wrap with namespace declarations so the decoder resolves prefixes correctly.
 	wrapped := append(
-		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`),
+		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav" xmlns:CAL="urn:ietf:params:xml:ns:caldav">`),
 		inner...,
 	)
 	wrapped = append(wrapped, []byte("</prop>")...)
@@ -88,6 +89,8 @@ func propElem(ns, local string) string {
 		return fmt.Sprintf("<D:%s/>", local)
 	case NScarddav:
 		return fmt.Sprintf("<C:%s/>", local)
+	case NScaldav:
+		return fmt.Sprintf("<CAL:%s/>", local)
 	default:
 		return fmt.Sprintf("<ns0:%s xmlns:ns0=%q/>", local, ns)
 	}
@@ -238,6 +241,8 @@ func propElemWithValue(ns, local, value string) string {
 		return fmt.Sprintf("<D:%s>%s</D:%s>", local, xmlEscape(value), local)
 	case NScarddav:
 		return fmt.Sprintf("<C:%s>%s</C:%s>", local, xmlEscape(value), local)
+	case NScaldav:
+		return fmt.Sprintf("<CAL:%s>%s</CAL:%s>", local, xmlEscape(value), local)
 	default:
 		return fmt.Sprintf("<ns0:%s xmlns:ns0=%q>%s</ns0:%s>", local, ns, xmlEscape(value), local)
 	}
@@ -337,4 +342,70 @@ func PropfindProps(props [][2]string) []byte {
 		panic(fmt.Sprintf("davlint: PropfindProps marshal: %v", err))
 	}
 	return append([]byte(xml.Header), out...)
+}
+
+// ReportCalendarQuery returns a CALDAV:calendar-query REPORT body (RFC 4791 §7.8).
+// props is the list of [namespace, localname] pairs to request per matching resource.
+// filter is an optional raw XML fragment for the CAL:filter element; nil means
+// return all calendar objects (CAL:comp-filter name="VCALENDAR" with no sub-filter).
+func ReportCalendarQuery(props [][2]string, filter []byte) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<CAL:calendar-query xmlns:D="DAV:" xmlns:CAL="urn:ietf:params:xml:ns:caldav">`)
+	b.WriteString(`<D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElem(p[0], p[1]))
+	}
+	b.WriteString(`</D:prop>`)
+	b.WriteString(`<CAL:filter>`)
+	if len(filter) > 0 {
+		_, _ = b.Write(filter) //nolint:errcheck // strings.Builder.Write never fails
+	} else {
+		b.WriteString(`<CAL:comp-filter name="VCALENDAR"/>`)
+	}
+	b.WriteString(`</CAL:filter>`)
+	b.WriteString(`</CAL:calendar-query>`)
+	return []byte(b.String())
+}
+
+// ReportCalendarMultiget returns a CALDAV:calendar-multiget REPORT body (RFC 4791 §7.9).
+// props is the list of [namespace, localname] pairs to request per resource;
+// hrefs is the list of absolute-path resource URLs to retrieve.
+func ReportCalendarMultiget(props [][2]string, hrefs []string) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
+	b.WriteString(`<CAL:calendar-multiget xmlns:D="DAV:" xmlns:CAL="urn:ietf:params:xml:ns:caldav">`)
+	b.WriteString(`<D:prop>`)
+	for _, p := range props {
+		b.WriteString(propElem(p[0], p[1]))
+	}
+	b.WriteString(`</D:prop>`)
+	for _, href := range hrefs {
+		fmt.Fprintf(&b, "<D:href>%s</D:href>", xmlEscape(href))
+	}
+	b.WriteString(`</CAL:calendar-multiget>`)
+	return []byte(b.String())
+}
+
+// ReportFreeBusyQuery returns a CALDAV:free-busy-query REPORT body (RFC 4791 §7.10).
+// start and end are UTC iCalendar date-time strings (e.g. "20240601T000000Z").
+func ReportFreeBusyQuery(start, end string) []byte {
+	return []byte(fmt.Sprintf(
+		`<?xml version="1.0" encoding="utf-8"?>`+
+			`<CAL:free-busy-query xmlns:CAL="urn:ietf:params:xml:ns:caldav">`+
+			`<CAL:time-range start=%q end=%q/>`+
+			`</CAL:free-busy-query>`,
+		start, end,
+	))
+}
+
+// CalendarQueryVEVENTFilter returns a CAL:comp-filter XML fragment that selects
+// all VEVENT components within a VCALENDAR (RFC 4791 §7.8.5).
+// Pass as the filter argument to ReportCalendarQuery.
+func CalendarQueryVEVENTFilter() []byte {
+	return []byte(
+		`<CAL:comp-filter xmlns:CAL="urn:ietf:params:xml:ns:caldav" name="VCALENDAR">` +
+			`<CAL:comp-filter name="VEVENT"/>` +
+			`</CAL:comp-filter>`,
+	)
 }

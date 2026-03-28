@@ -58,7 +58,7 @@ func PropHrefValue(ms *client.Multistatus, href, ns, local string) (string, erro
 // within a raw <prop> inner XML fragment.
 func extractHref(inner []byte, ns, local string) (string, error) {
 	wrapped := bytes.Join([][]byte{
-		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`),
+		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav" xmlns:CAL="urn:ietf:params:xml:ns:caldav">`),
 		inner,
 		[]byte(`</prop>`),
 	}, nil)
@@ -157,7 +157,7 @@ func PropTextContains(ms *client.Multistatus, href, ns, local, substr string) er
 // (if any) are traversed but their tag names are not included in the result.
 func extractText(inner []byte, ns, local string) (string, error) {
 	wrapped := bytes.Join([][]byte{
-		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`),
+		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav" xmlns:CAL="urn:ietf:params:xml:ns:caldav">`),
 		inner,
 		[]byte(`</prop>`),
 	}, nil)
@@ -202,7 +202,7 @@ func ResourceTypeContains(ms *client.Multistatus, href, ns, local string) error 
 		return fmt.Errorf("ResourceTypeContains {%s}%s: %w", ns, local, err)
 	}
 	wrapped := bytes.Join([][]byte{
-		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">`),
+		[]byte(`<prop xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav" xmlns:CAL="urn:ietf:params:xml:ns:caldav">`),
 		ps.Prop.Inner,
 		[]byte(`</prop>`),
 	}, nil)
