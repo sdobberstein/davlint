@@ -122,8 +122,8 @@ func All() []Test {
 // Protocol bundle definitions: map protocol name → suite IDs.
 var bundles = map[string][]string{
 	"webdav":  {"rfc4918"},
-	"carddav": {"rfc4918", "rfc6352", "rfc6578", "rfc6764", "rfc2426"},
-	"caldav":  {"rfc4918", "rfc4791", "rfc5545", "rfc7986", "rfc6578", "rfc6764"},
+	"carddav": {"rfc4918", "rfc6352", "rfc6578", "rfc6764", "rfc2426", "rfc6868"},
+	"caldav":  {"rfc4918", "rfc4791", "rfc5545", "rfc7986", "rfc6868", "rfc6578", "rfc6764"},
 }
 
 // Default excluded tags per protocol (optional features).
@@ -358,8 +358,8 @@ func discoverContextPath(ctx context.Context, cfg *config.Config, primary *clien
 var davTokenSuites = map[string][]string{
 	"2":               {"rfc4918"},
 	"access-control":  {"rfc3744"},
-	"addressbook":     {"rfc6352", "rfc2426"},
-	"calendar-access": {"rfc4791", "rfc5545", "rfc7986"},
+	"addressbook":     {"rfc6352", "rfc2426", "rfc6868"},
+	"calendar-access": {"rfc4791", "rfc5545", "rfc7986", "rfc6868"},
 	"sync-collection": {"rfc6578"},
 	"extended-mkcol":  {"rfc5689"},
 }
