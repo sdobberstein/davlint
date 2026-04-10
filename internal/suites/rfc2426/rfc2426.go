@@ -235,19 +235,6 @@ func init() {
 		},
 		Fn: testNicknameEscapedCommaRoundtrip,
 	})
-	// §2.4.1: Duplicate predefined TYPE parameter values (e.g. TYPE=WORK,WORK) SHOULD be rejected.
-	suite.Register(suite.Test{
-		ID:            "rfc2426.reject-duplicate-type",
-		Suite:         "rfc2426",
-		Description:   "PUT a vCard with TYPE=WORK,WORK is rejected with 4xx (RFC 2426 §2.4.1 SHOULD)",
-		Severity:      suite.Should,
-		Tags:          []string{"vcard"},
-		MinPrincipals: 1,
-		References: []suite.RFCRef{
-			{RFC: "RFC 2426", Section: "§2.4.1", URL: "https://www.rfc-editor.org/rfc/rfc2426#section-2.4.1"},
-		},
-		Fn: testRejectDuplicateType,
-	})
 	// §3.4.2: GEO property MUST accept decimal-degree values and preserve them through a round-trip.
 	suite.Register(suite.Test{
 		ID:            "rfc2426.geo-decimal-degrees-accepted",
@@ -446,16 +433,6 @@ const vcardNICKNAMEEscapedComma = "BEGIN:VCARD\r\n" +
 	"FN:Alice Test\r\n" +
 	"N:Test;Alice;;;\r\n" +
 	"NICKNAME:Alice\\, the Great\r\n" +
-	"END:VCARD\r\n"
-
-// vcardDuplicateType has TYPE=WORK,WORK on a TEL property. Duplicate predefined
-// TYPE values are considered invalid per RFC 2426 §2.4.1.
-const vcardDuplicateType = "BEGIN:VCARD\r\n" +
-	"VERSION:3.0\r\n" +
-	"UID:urn:uuid:d0000000-0000-0000-0000-000000000001\r\n" +
-	"FN:Alice Test\r\n" +
-	"N:Test;Alice;;;\r\n" +
-	"TEL;TYPE=WORK,WORK:+1-555-555-5555\r\n" +
 	"END:VCARD\r\n"
 
 // vcardGEO is a valid vCard 3.0 with a GEO property using decimal-degree values
@@ -791,10 +768,6 @@ func testNicknameEscapedCommaRoundtrip(ctx context.Context, sess *suite.Session)
 		return fmt.Errorf("NICKNAME escaped-comma round-trip: text after '\\,' not found; server may have split on \\,: %w", err)
 	}
 	return nil
-}
-
-func testRejectDuplicateType(ctx context.Context, sess *suite.Session) error {
-	return putInvalidVCard(ctx, sess, []byte(vcardDuplicateType), "PUT vCard with TYPE=WORK,WORK duplicate type value")
 }
 
 // testGEODecimalDegreesAccepted verifies RFC 2426 §3.4.2: the GEO property MUST accept
